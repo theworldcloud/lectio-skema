@@ -1,0 +1,10 @@
+{
+    "version": 2,
+    "name": "storage-server",
+    "builds": [
+        { "src": "build/main.js", "use": "@vercel/node" }
+    ],
+    "routes": [
+        { "src": "/(.*)", "dest": "build/main.js" }
+    ]
+}
