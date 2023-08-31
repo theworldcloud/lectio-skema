@@ -17,4 +17,5 @@ application.use(express.urlencoded({ extended: true }));
 application.listen(3000, () => console.info("Started application!"));
 application.get("/", (req: Request, res: Response) => res.send("executed:   " + executed));
 
-setInterval(() => executed++, 5 * SECONDS);
+executeupdate();
+setInterval(executeupdate, 30 * MINUTES);
