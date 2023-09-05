@@ -27,7 +27,7 @@ export type LectioCalendar = {
     cancelled: boolean;
 
     teachers: Array<string>;
-    locations: string | undefined;
+    locations: Array<string>;
     notes: string | undefined;
     homework: string | undefined;
 }

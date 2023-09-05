@@ -74,9 +74,11 @@ function getLectioTeams(lectioInformation) {
         return lectioTeams;
     });
 }
-function getEndOfInformation(calender, position) {
+function getEndOfInformation(calender, position, special) {
     const calendarInputs = calender.slice(position + 1, calender.length);
     for (const input in calendarInputs) {
+        if (special === true && calendarInputs[input].length === 0)
+            return parseInt(input) + position + 2;
         if (calendarInputs[input].includes('">\r')) {
             return parseInt(input) + position + 2;
         }
@@ -119,6 +121,21 @@ function isAvailable(label) {
         return false;
     return true;
 }
+function getSpecialInformation(information) {
+    const endOfInformation = getEndOfInformation(information, 0, true);
+    for (const index in information) {
+        if (parseInt(index) <= endOfInformation) {
+            information[index] = information[index].replace('\r', "");
+            information[index] = information[index].replace('">', "");
+        }
+    }
+    if (information.length - 1 > endOfInformation) {
+        for (let index = endOfInformation; index < information.length; index++) {
+            delete information[index];
+        }
+    }
+    return information.join(" ");
+}
 function getLectioCalendarInformation(calender, position, teams) {
     if (calender[position].includes("span"))
         return undefined;
@@ -127,7 +144,7 @@ function getLectioCalendarInformation(calender, position, teams) {
     if (calender[position].includes("withMediaQuery"))
         return undefined;
     const startOfInformation = position;
-    const endOfInformation = getEndOfInformation(calender, position);
+    const endOfInformation = getEndOfInformation(calender, position, false);
     const informationInputs = calender.slice(startOfInformation, endOfInformation);
     if (informationInputs[1].includes("Hele dagen")) {
         const label = informationInputs[0].split('data-additionalInfo="')[1];
@@ -143,7 +160,7 @@ function getLectioCalendarInformation(calender, position, teams) {
             available: true,
             cancelled: false,
             teachers: [],
-            locations: undefined,
+            locations: [],
             notes: undefined,
             homework: undefined
         };
@@ -153,12 +170,10 @@ function getLectioCalendarInformation(calender, position, teams) {
         return undefined;
     if (test === "Studiecafé" || test === "FLEX-modul")
         return undefined;
-    console.log(informationInputs);
-    console.log("");
-    console.log("");
-    console.log("");
     const calendarInformation = {};
     calendarInformation.cancelled = false;
+    calendarInformation.notes = undefined;
+    calendarInformation.homework = undefined;
     if (isDate(test)) {
         calendarInformation.date = test.split(" ")[0];
         calendarInformation.time = { start: test.split(" ")[1], end: test.split(" ")[3] };
@@ -171,7 +186,6 @@ function getLectioCalendarInformation(calender, position, teams) {
                     start: informationInputs[input].split(" ")[1],
                     end: informationInputs[input].split(" ")[3]
                 };
-                delete informationInputs[input];
                 break;
             }
         }
@@ -185,9 +199,11 @@ function getLectioCalendarInformation(calender, position, teams) {
     if (isLabel(test)) {
         calendarInformation.label = test;
     }
+    if (calendarInformation.label === undefined && isLabel(informationInputs[1]) === true)
+        calendarInformation.label = informationInputs[1];
     for (const input in informationInputs) {
         const infInput = informationInputs[input];
-        if (infInput.includes("Hold:")) {
+        if (infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
             let data = infInput.split("Hold: ")[1].split(" ");
             data[1] = data[1].replace(",", "");
             if (data[1].includes("stm") === true || data[1].includes("vrk") === true) {
@@ -218,11 +234,34 @@ function getLectioCalendarInformation(calender, position, teams) {
             const teachers = infInput.split("Lærere: ")[1].split(", ");
             calendarInformation.teachers = teachers;
         }
+        if (infInput.includes("Lokale:")) {
+            const location = infInput.split("Lokale: ")[1].replace('">\r', "");
+            calendarInformation.locations = [location];
+        }
+        if (infInput.includes("Lokaler:")) {
+            const locations = infInput.split("Lokaler: ")[1].replace('">\r', "").split(", ");
+            calendarInformation.locations = locations;
+        }
+        if (infInput.includes("Note:")) {
+            const notes = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            calendarInformation.notes = notes;
+        }
+        if (infInput.includes("Lektier:")) {
+            const homework = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            calendarInformation.homework = homework;
+        }
+    }
+    if (calendarInformation.label !== undefined && isLabel(informationInputs[1]) === true) {
+        const extraLabel = informationInputs[1];
+        if (extraLabel.includes("Hold:") === false && calendarInformation.label !== extraLabel) {
+            calendarInformation.label = calendarInformation.label + " | " + extraLabel;
+        }
     }
     if (calendarInformation.teachers === undefined)
         calendarInformation.teachers = [];
+    if (calendarInformation.locations === undefined)
+        calendarInformation.locations = [];
     calendarInformation.available = isAvailable(calendarInformation.label);
-    console.log(calendarInformation);
     return calendarInformation;
 }
 function getLectioCalendar(lectioInformation, lectioTeams) {

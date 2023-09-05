@@ -69,10 +69,12 @@ async function getLectioTeams(lectioInformation: LectioInformation): Promise<Lec
     return lectioTeams;
 }
 
-function getEndOfInformation(calender: Array<string>, position: number): number {
+function getEndOfInformation(calender: Array<string>, position: number, special: boolean): number {
     const calendarInputs = calender.slice(position + 1, calender.length);
 
     for (const input in calendarInputs) {
+        if (special === true && calendarInputs[input].length === 0) return parseInt(input) + position + 2;
+
         if (calendarInputs[input].includes('">\r')) {
             return parseInt(input) + position + 2;
         }
@@ -113,15 +115,34 @@ function isAvailable(label: string): boolean {
     return true;
 }
 
+function getSpecialInformation(information: Array<string>): string | undefined {
+    const endOfInformation = getEndOfInformation(information, 0, true);
+
+    for (const index in information) {
+        if (parseInt(index) <= endOfInformation) {
+            information[index] = information[index].replace('\r', "");
+            information[index] = information[index].replace('">', "");
+        }
+    }
+
+    if (information.length - 1 > endOfInformation) {
+        for (let index = endOfInformation; index < information.length; index++) {
+            delete information[index];
+        }   
+    }
+
+    return information.join(" ");
+}
+
 function getLectioCalendarInformation(calender: Array<string>, position: number, teams:LectioTeams): LectioCalendar | undefined {
     if (calender[position].includes("span")) return undefined;
     if (calender[position].includes("s2skemabrikInnerContainer")) return undefined;
     if (calender[position].includes("withMediaQuery")) return undefined;
 
     const startOfInformation = position;
-    const endOfInformation = getEndOfInformation(calender, position);
+    const endOfInformation = getEndOfInformation(calender, position, false);
     const informationInputs = calender.slice(startOfInformation, endOfInformation);
-
+    
     if (informationInputs[1].includes("Hele dagen")) {
         const label = informationInputs[0].split('data-additionalInfo="')[1];
         const date = informationInputs[1].split(" ")[0];
@@ -140,7 +161,7 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
             cancelled: false,
 
             teachers: [],
-            locations: undefined,
+            locations: [],
             notes: undefined,
             homework: undefined
         }; 
@@ -150,13 +171,10 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
     if (test === undefined) return undefined;
     if (test === "Studiecafé" || test === "FLEX-modul") return undefined;
 
-    console.log(informationInputs);
-    console.log("");
-    console.log("");
-    console.log("");
-
     const calendarInformation:LectioCalendar = {} as any;
     calendarInformation.cancelled = false;
+    calendarInformation.notes = undefined;
+    calendarInformation.homework = undefined;
 
     if (isDate(test)) {
         calendarInformation.date = test.split(" ")[0];
@@ -170,12 +188,11 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
                     end: informationInputs[input].split(" ")[3] 
                 }
 
-                delete informationInputs[input];
                 break;
             }
         }
     }
-
+    
     if (isState(test)) {
         if (test.includes("Aflyst!")) calendarInformation.cancelled = true;
         if (test.includes("Ændret!")) calendarInformation.cancelled = false;
@@ -185,10 +202,13 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
         calendarInformation.label = test;
     }
 
+    if (calendarInformation.label === undefined && isLabel(informationInputs[1]) === true) 
+        calendarInformation.label = informationInputs[1];
+
     for (const input in informationInputs) {
         const infInput = informationInputs[input];
  
-        if (infInput.includes("Hold:")) {
+        if (infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
             let data = infInput.split("Hold: ")[1].split(" ");
 
             data[1] = data[1].replace(",", "");
@@ -223,12 +243,40 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
             const teachers = infInput.split("Lærere: ")[1].split(", ");
             calendarInformation.teachers = teachers;
         }
+
+        if (infInput.includes("Lokale:")) {
+            const location = infInput.split("Lokale: ")[1].replace('">\r', "");
+            calendarInformation.locations = [ location ];
+        }
+
+        if (infInput.includes("Lokaler:")) {
+            const locations = infInput.split("Lokaler: ")[1].replace('">\r', "").split(", ");
+            calendarInformation.locations = locations;
+        }
+
+        if (infInput.includes("Note:")) {
+            const notes = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            calendarInformation.notes = notes;
+        }
+
+        if (infInput.includes("Lektier:")) {
+            const homework = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            calendarInformation.homework = homework;
+        }
     }
 
+    if (calendarInformation.label !== undefined && isLabel(informationInputs[1]) === true) {
+        const extraLabel = informationInputs[1];
+
+        if (extraLabel.includes("Hold:") === false && calendarInformation.label !== extraLabel) {
+            calendarInformation.label = calendarInformation.label + " | " + extraLabel;
+        } 
+    } 
+
     if (calendarInformation.teachers === undefined) calendarInformation.teachers = [];
+    if (calendarInformation.locations === undefined) calendarInformation.locations = [];
     calendarInformation.available = isAvailable(calendarInformation.label);
     
-    console.log(calendarInformation);
     return calendarInformation;
 }
 
