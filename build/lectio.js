@@ -108,16 +108,29 @@ function isLabel(label) {
         return false;
     if (isState(label) === true)
         return false;
+    if (label.includes("Lærer") === true)
+        return false;
+    if (label.includes("Lokale") === true)
+        return false;
+    if (label.includes("Hold:") === true)
+        return false;
+    if (label.includes("Note") === true)
+        return false;
+    if (label.includes("Lektier") === true)
+        return false;
     return true;
 }
 function isAvailable(label) {
+    label = label.toLowerCase();
     if (label.includes(types_1.CLASS) === true)
         return false;
     if (label.includes(types_1.TEAM) === true)
         return false;
-    if (label.includes("Morgensamling") === true)
+    if (label.includes("morgensamling") === true)
         return false;
-    if (label.includes("Studievejledning") === true)
+    if (label.includes("studievejledning") === true)
+        return false;
+    if (label.includes("ekskursion") === true)
         return false;
     return true;
 }
@@ -146,6 +159,8 @@ function getLectioCalendarInformation(calender, position, teams) {
     const startOfInformation = position;
     const endOfInformation = getEndOfInformation(calender, position, false);
     const informationInputs = calender.slice(startOfInformation, endOfInformation);
+    if (informationInputs.length === 0)
+        return undefined;
     if (informationInputs[1].includes("Hele dagen")) {
         const label = informationInputs[0].split('data-additionalInfo="')[1];
         const date = informationInputs[1].split(" ")[0];
@@ -175,17 +190,28 @@ function getLectioCalendarInformation(calender, position, teams) {
     calendarInformation.notes = undefined;
     calendarInformation.homework = undefined;
     if (isDate(test)) {
-        calendarInformation.date = test.split(" ")[0];
-        calendarInformation.time = { start: test.split(" ")[1], end: test.split(" ")[3] };
+        const times = test.split(" ");
+        if (times.length === 5) {
+            calendarInformation.date = { start: times[0], end: times[3] };
+            calendarInformation.time = { start: times[1], end: times[4] };
+        }
+        else {
+            calendarInformation.date = times[0];
+            calendarInformation.time = { start: times[1], end: times[3] };
+        }
     }
     else {
         for (const input in informationInputs) {
             if (isDate(informationInputs[input]) === true) {
-                calendarInformation.date = informationInputs[input].split(" ")[0];
-                calendarInformation.time = {
-                    start: informationInputs[input].split(" ")[1],
-                    end: informationInputs[input].split(" ")[3]
-                };
+                const times = informationInputs[input].split(" ");
+                if (times.length === 5) {
+                    calendarInformation.date = { start: times[0], end: times[3] };
+                    calendarInformation.time = { start: times[1], end: times[4] };
+                }
+                else {
+                    calendarInformation.date = times[0];
+                    calendarInformation.time = { start: times[1], end: times[3] };
+                }
                 break;
             }
         }
@@ -203,7 +229,26 @@ function getLectioCalendarInformation(calender, position, teams) {
         calendarInformation.label = informationInputs[1];
     for (const input in informationInputs) {
         const infInput = informationInputs[input];
-        if (infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
+        if (calendarInformation.label !== undefined && infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
+            let data = infInput.split("Hold: ")[1].split(" ");
+            data[1] = data[1].replace(",", "");
+            if (data[1].includes("stm") === true || data[1].includes("vrk") === true) {
+                data = [data[0], data[1]];
+            }
+            let label = teams[data[1].toUpperCase()];
+            const teamData = data[1].split("-");
+            if (teamData.length === 2)
+                label = teams[teamData[1].toUpperCase()];
+            if (data.length > 2) {
+                if (calendarInformation.label === undefined)
+                    return undefined;
+                calendarInformation.label = calendarInformation.label;
+            }
+            else {
+                calendarInformation.label = `${data[0]} ${data[1].toLowerCase()} (${label}) | ${calendarInformation.label}`;
+            }
+        }
+        if (calendarInformation.label === undefined && infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
             let data = infInput.split("Hold: ")[1].split(" ");
             data[1] = data[1].replace(",", "");
             if (data[1].includes("stm") === true || data[1].includes("vrk") === true) {
@@ -232,6 +277,7 @@ function getLectioCalendarInformation(calender, position, teams) {
         }
         if (infInput.includes("Lærere:")) {
             const teachers = infInput.split("Lærere: ")[1].split(", ");
+            teachers[teachers.length - 1] = teachers[teachers.length - 1].replace('">\r', "");
             calendarInformation.teachers = teachers;
         }
         if (infInput.includes("Lokale:")) {
@@ -240,6 +286,7 @@ function getLectioCalendarInformation(calender, position, teams) {
         }
         if (infInput.includes("Lokaler:")) {
             const locations = infInput.split("Lokaler: ")[1].replace('">\r', "").split(", ");
+            locations[locations.length - 1] = locations[locations.length - 1].replace('">\r', "");
             calendarInformation.locations = locations;
         }
         if (infInput.includes("Note:")) {
@@ -264,9 +311,9 @@ function getLectioCalendarInformation(calender, position, teams) {
     calendarInformation.available = isAvailable(calendarInformation.label);
     return calendarInformation;
 }
-function getLectioCalendar(lectioInformation, lectioTeams) {
+function getLectioCalendar(lectioInformation, lectioTeams, date) {
     return __awaiter(this, void 0, void 0, function* () {
-        const site = yield lectioFetch("login.aspx?prevurl=SkemaNy.aspx", lectioInformation);
+        const site = yield lectioFetch(`login.aspx?prevurl=SkemaNy.aspx?week=${date}`, lectioInformation);
         const htmlElements = site.split("\n");
         const startCalendar = htmlElements.findIndex((element) => element.includes('id="s_m_Content_Content_SkemaNyMedNavigation_skemaprintarea"'));
         const endCalendar = htmlElements.findIndex((element) => element.includes('</table>'));
@@ -280,8 +327,26 @@ function getLectioCalendar(lectioInformation, lectioTeams) {
                 }
             }
         }
-        console.log(lectioCalendar);
+        return lectioCalendar;
     });
+}
+function getDates() {
+    const dates = [];
+    const millisecs = 86400000;
+    const now = new Date();
+    const date = new Date(now.getFullYear(), 0, 1);
+    let weekDate = Math.ceil((((now.getTime() - date.getTime()) / millisecs) + date.getDay() + 1) / 7) - 1;
+    let year = date.getFullYear();
+    for (let index = 0; index <= 2; index++) {
+        if (weekDate === 0)
+            year = year + 1;
+        weekDate = weekDate + 1;
+        const week = weekDate > 9 ? weekDate.toString() : "0" + weekDate.toString();
+        dates.push(week + year.toString());
+        if (weekDate >= 52)
+            weekDate = 0;
+    }
+    return dates;
 }
 function lectio() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -291,7 +356,13 @@ function lectio() {
         const lectioTeams = yield getLectioTeams(lectioInformation);
         if (lectioTeams === undefined)
             return;
-        getLectioCalendar(lectioInformation, lectioTeams);
+        const calendar = [];
+        const dates = getDates();
+        for (const date of dates) {
+            const weekCalendar = yield getLectioCalendar(lectioInformation, lectioTeams, date);
+            calendar.push(...weekCalendar);
+        }
+        return calendar;
     });
 }
 exports.lectio = lectio;

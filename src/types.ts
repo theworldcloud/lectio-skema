@@ -14,14 +14,12 @@ export interface LectioInformation {
 }
 
 export type LectioTeams = Record<string, string>;
+export type LectioEvent = { start: string; end: string; };
 
 export type LectioCalendar = {
     label: string;
-    date: string;
-    time: {
-        start: string;
-        end: string;
-    } | "all-day";
+    date: LectioEvent | string;
+    time: LectioEvent | "all-day";
 
     available: boolean;
     cancelled: boolean;

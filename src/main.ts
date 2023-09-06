@@ -19,6 +19,13 @@ application.use(express.urlencoded({ extended: true }));
 application.listen(3000, () => console.info("Started application!"));
 application.get("/", (req: Request, res: Response) => res.send("executed:   " + executed));
 
-lectio();
-executeupdate();
-setInterval(executeupdate, 30 * MINUTES);
+// lectio();
+// executeupdate();
+// setInterval(executeupdate, 30 * MINUTES);
+
+async function main() {
+    const lectioCalendar = await lectio();
+    console.log(lectioCalendar);
+}
+
+main();
