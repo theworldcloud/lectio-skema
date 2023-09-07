@@ -9,9 +9,24 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.calendar = void 0;
-function calendar() {
+exports.calendar = exports.googleAuthentication = void 0;
+const googleapis_1 = require("googleapis");
+function googleAuthentication() {
     return __awaiter(this, void 0, void 0, function* () {
+        const authClient = new googleapis_1.google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+        authClient.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+        return authClient;
+    });
+}
+exports.googleAuthentication = googleAuthentication;
+function calendar(dates) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const GOOGLE_CALENDAR = process.env.GOOGLE_CALENDAR;
+        const authClient = yield googleAuthentication();
+        const googleCalendar = googleapis_1.google.calendar({ version: "v3", auth: authClient });
+        const googleEventData = yield googleCalendar.events.list({ calendarId: GOOGLE_CALENDAR, timeMin: dates[0], timeMax: dates[1] });
+        const googleEvents = googleEventData.data.items;
+        console.log(googleEvents);
     });
 }
 exports.calendar = calendar;

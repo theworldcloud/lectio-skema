@@ -348,6 +348,17 @@ function getDates() {
     }
     return dates;
 }
+function getGoogleDates(dates) {
+    const googleDates = [];
+    for (const date of dates) {
+        const week = parseInt(date.substring(0, 2));
+        const year = parseInt(date.substring(2, 6));
+        const day = 1 + (week - 1) * 7;
+        const googleDate = new Date(year, 0, day + 1);
+        googleDates.push(googleDate);
+    }
+    return googleDates;
+}
 function lectio() {
     return __awaiter(this, void 0, void 0, function* () {
         const lectioInformation = yield getLectioInformation();
@@ -358,11 +369,12 @@ function lectio() {
             return;
         const calendar = [];
         const dates = getDates();
+        const calendarDates = getGoogleDates([dates[0], dates[2]]);
         for (const date of dates) {
             const weekCalendar = yield getLectioCalendar(lectioInformation, lectioTeams, date);
             calendar.push(...weekCalendar);
         }
-        return calendar;
+        return [calendar, calendarDates];
     });
 }
 exports.lectio = lectio;

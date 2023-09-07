@@ -368,7 +368,22 @@ function getDates(): Array<string> {
     return dates;
 }
 
-export async function lectio() {
+function getGoogleDates(dates: Array<string>) {
+    const googleDates: Array<Date> = [];
+
+    for (const date of dates) {
+        const week = parseInt(date.substring(0, 2));
+        const year = parseInt(date.substring(2, 6));
+
+        const day = 1 + (week - 1) * 7;
+        const googleDate = new Date(year, 0, day + 1);
+        googleDates.push(googleDate)
+    }
+
+    return googleDates;
+}
+
+export async function lectio(): Promise<any> {
     const lectioInformation = await getLectioInformation();
     if (lectioInformation === undefined) return;
 
@@ -377,11 +392,12 @@ export async function lectio() {
 
     const calendar = [];
     const dates = getDates();
+    const calendarDates = getGoogleDates([ dates[0], dates[2] ]);
 
     for (const date of dates) {
         const weekCalendar = await getLectioCalendar(lectioInformation, lectioTeams, date);
         calendar.push(...weekCalendar)
     }
 
-    return calendar;
+    return [ calendar, calendarDates ];
 }

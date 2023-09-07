@@ -31,34 +31,30 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.application = exports.executeupdate = void 0;
-const express_1 = __importDefault(require("express"));
 const dotenv = __importStar(require("dotenv"));
 const lectio_1 = require("./lectio");
+const calendar_1 = require("./calendar");
 const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
 const HOURS = 60 * MINUTES;
-let executed = 0;
-const executeupdate = () => executed++;
-exports.executeupdate = executeupdate;
 dotenv.config();
-exports.application = (0, express_1.default)();
-exports.application.use(express_1.default.static("public"));
-exports.application.use(express_1.default.json());
-exports.application.use(express_1.default.urlencoded({ extended: true }));
-exports.application.listen(3000, () => console.info("Started application!"));
-exports.application.get("/", (req, res) => res.send("executed:   " + executed));
-// lectio();
-// executeupdate();
-// setInterval(executeupdate, 30 * MINUTES);
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        const lectioCalendar = yield (0, lectio_1.lectio)();
-        console.log(lectioCalendar);
+        const [lectioCalendar, dates] = yield (0, lectio_1.lectio)();
+        // console.log(lectioCalendar);
+        (0, calendar_1.calendar)(dates);
     });
 }
 main();
+// let executed:number = 0;
+// export const executeupdate = () => executed++;
+// export const application: Express = express();
+// application.use(express.static("public"));
+// application.use(express.json());
+// application.use(express.urlencoded({ extended: true }));
+// application.listen(3000, () => console.info("Started application!"));
+// application.get("/", (req: Request, res: Response) => res.send("executed:   " + executed));
+// lectio();
+// executeupdate();
+// setInterval(executeupdate, 30 * MINUTES);
