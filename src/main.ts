@@ -15,7 +15,7 @@ application.use(express.json());
 application.use(express.urlencoded({ extended: true }));
 
 application.listen(3000, () => console.info("Started application!"));
-application.get("/", (request:Request, response:Response) => { return response.sendStatus(400); });
+application.get("/", (request:Request, response:Response) => { return response.send(":)"); });
 
 async function main() {
     const data = new Date().toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" });
@@ -39,5 +39,5 @@ async function main() {
     console.log(" ");
 }
 
-main();
-setInterval(main, 7 * HOURS);
+// main();
+// setInterval(main, 7 * HOURS);
