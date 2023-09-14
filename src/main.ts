@@ -11,28 +11,26 @@ const HOURS = 60 * MINUTES;
 dotenv.config();
 
 async function main() {
-    const [ lectioCalendar, dates ] = await lectio();
-    // console.log(lectioCalendar);
+    const data = new Date().toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" });
+    const [ date, time ] = data.split(" ");
+    const now = `${date.replace(".", "/").replace(".", "/")} - ${time.replace(".", ":").slice(0, 5)}`;
 
-    calendar(dates);
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
+    console.log(`[ ${now} ] Updating calendar...`);
+
+    const [ lectioCalendar, dates ] = await lectio();
+    const [ iEvents, dEvents, aEvents ] = await calendar(dates, lectioCalendar);
+
+    console.log(" ");
+    console.log(`[ ${now} ]`);
+    console.log(`- Inserted ${iEvents} events`);
+    console.log(`- Deleted ${dEvents} events`);
+    console.log(`- Updated calendar | ${aEvents} events affected!`);
+    console.log(" ");
+    console.log(" ");
 }
 
 main();
-
-
-
-
-// let executed:number = 0;
-// export const executeupdate = () => executed++;
-
-// export const application: Express = express();
-// application.use(express.static("public"));
-// application.use(express.json());
-// application.use(express.urlencoded({ extended: true }));
-
-// application.listen(3000, () => console.info("Started application!"));
-// application.get("/", (req: Request, res: Response) => res.send("executed:   " + executed));
-
-// lectio();
-// executeupdate();
-// setInterval(executeupdate, 30 * MINUTES);
+setInterval(main, 7 * HOURS);

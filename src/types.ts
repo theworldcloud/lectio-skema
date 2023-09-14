@@ -5,7 +5,7 @@ export const IGNORED_EVENTS = [
     "g-hold", "1.g", "2.g", "3.g", 
     "mus-lejr", "studiecafé", "folkemøde",
     "ledelse", "verdens", "bibliotek", 
-    "tromme"
+    "tromme", "2.hf", "udveksling"
 ]
 
 export interface LectioInformation {

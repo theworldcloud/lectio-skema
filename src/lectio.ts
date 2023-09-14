@@ -1,4 +1,4 @@
-import { LectioInformation, LectioTeams, LectioCalendar, IGNORED_EVENTS, TEAM, CLASS } from "./types";
+import { LectioEvent, LectioInformation, LectioTeams, LectioCalendar, IGNORED_EVENTS, TEAM, CLASS } from "./types";
 
 async function getLectioInformation(): Promise<LectioInformation | undefined> {
     const site = await fetch(`https://www.lectio.dk/lectio/${process.env.LECTIO}/login.aspx`);
@@ -77,6 +77,8 @@ function getEndOfInformation(calender: Array<string>, position: number, special:
 
         if (calendarInputs[input].includes('">\r')) {
             return parseInt(input) + position + 2;
+        } else if (calendarInputs[input].includes("'>\r")) {
+            return parseInt(input) + position + 2;
         }
     }
 
@@ -113,12 +115,14 @@ function isLabel(label: string): boolean {
 
 function isAvailable(label: string): boolean {
     label = label.toLowerCase();
-
+    
     if (label.includes(CLASS) === true) return false;
     if (label.includes(TEAM) === true) return false;
     if (label.includes("morgensamling") === true) return false;
     if (label.includes("studievejledning") === true) return false;
     if (label.includes("ekskursion") === true) return false;
+    if (label.includes("samtale") === true) return false;
+    if (label.includes("møde") === true) return false;
 
     return true;
 }
@@ -130,6 +134,8 @@ function getSpecialInformation(information: Array<string>): string | undefined {
         if (parseInt(index) <= endOfInformation) {
             information[index] = information[index].replace('\r', "");
             information[index] = information[index].replace('">', "");
+            information[index] = information[index].replace("'>", "");
+            information[index] = information[index].replace(" [...]", "");
         }
     }
 
@@ -139,10 +145,11 @@ function getSpecialInformation(information: Array<string>): string | undefined {
         }   
     }
 
-    return information.join(" ");
+    information = information.filter((element) => element !== "");
+    return information.join("\n");
 }
 
-function getLectioCalendarInformation(calender: Array<string>, position: number, teams:LectioTeams): LectioCalendar | undefined {
+async function getLectioCalendarInformation(calender: Array<string>, position: number, teams:LectioTeams): Promise<LectioCalendar | undefined> {
     if (calender[position].includes("span")) return undefined;
     if (calender[position].includes("s2skemabrikInnerContainer")) return undefined;
     if (calender[position].includes("withMediaQuery")) return undefined;
@@ -153,13 +160,23 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
     if (informationInputs.length === 0) return undefined;
 
     if (informationInputs[1].includes("Hele dagen")) {
-        const label = informationInputs[0].split('data-additionalInfo="')[1];
-        const date = informationInputs[1].split(" ")[0];
-        
+        const label = informationInputs[0].split('data-additionalInfo=')[1].replace("'", "").replace('"', "");
+        let date = informationInputs[1].split(" ")[0];
+        if (label === undefined) return undefined;
+
         for (const event of IGNORED_EVENTS) {
             if ((label.toLowerCase()).includes(event) === true) 
                 return undefined;
         }
+
+        const data = (date).split("-");
+        const year = data[1];
+
+        const cDate = data[0].split("/");
+        const day = parseInt(cDate[0]) > 9 ? cDate[0] : "0" + cDate[0];
+        const month = parseInt(cDate[1]) > 9 ? cDate[1] : "0" + cDate[1];
+
+        date = `${day}/${month}-${year}`;
 
         return {
             label: label,
@@ -176,8 +193,10 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
         }; 
     }
 
-    const test = informationInputs[0].split('data-additionalInfo="')[1];
+
+    let test = informationInputs[0].split('data-additionalInfo=')[1];
     if (test === undefined) return undefined;
+    test = test.replace("'", "").replace('"', "");
     if (test === "Studiecafé" || test === "FLEX-modul") return undefined;
 
     const calendarInformation:LectioCalendar = {} as any;
@@ -275,6 +294,7 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
             teacher = teacher.replace("(", "");
             teacher = teacher.replace(")", "");
             teacher = teacher.replace('">\r', "");
+            teacher = teacher.replace("'>\r", "");
             
             calendarInformation.teachers = [ teacher ];
         }
@@ -282,27 +302,32 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
         if (infInput.includes("Lærere:")) {
             const teachers = infInput.split("Lærere: ")[1].split(", ");
             teachers[teachers.length - 1] = teachers[teachers.length - 1].replace('">\r', "");
+            teachers[teachers.length - 1] = teachers[teachers.length - 1].replace("'>\r", "");
             calendarInformation.teachers = teachers;
         }
 
         if (infInput.includes("Lokale:")) {
-            const location = infInput.split("Lokale: ")[1].replace('">\r', "");
+            const location = infInput.split("Lokale: ")[1].replace('">\r', "").replace("'>\r", "");
             calendarInformation.locations = [ location ];
         }
 
         if (infInput.includes("Lokaler:")) {
-            const locations = infInput.split("Lokaler: ")[1].replace('">\r', "").split(", ");
-            locations[locations.length - 1] = locations[locations.length - 1].replace('">\r', "");
+            const locations = infInput.split("Lokaler: ")[1].replace('">\r', "").replace("'>\r", "").split(", ");
+            locations[locations.length - 1] = locations[locations.length - 1].replace('">\r', "").replace("'>\r", "");
             calendarInformation.locations = locations;
         }
 
         if (infInput.includes("Note:")) {
-            const notes = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            let notes = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            if (notes !== undefined) notes = (notes).replace("[...]", "");
+
             calendarInformation.notes = notes;
         }
 
         if (infInput.includes("Lektier:")) {
-            const homework = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            let homework = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+            if (homework !== undefined) homework = (homework).replace("[...]", "");
+
             calendarInformation.homework = homework;
         }
     }
@@ -318,8 +343,89 @@ function getLectioCalendarInformation(calender: Array<string>, position: number,
     if (calendarInformation.teachers === undefined) calendarInformation.teachers = [];
     if (calendarInformation.locations === undefined) calendarInformation.locations = [];
     calendarInformation.available = isAvailable(calendarInformation.label);
-    
+
+    if (typeof calendarInformation.date === "string") {
+        const data = (calendarInformation.date).split("-");
+        const year = data[1];
+
+        const cDate = data[0].split("/");
+        const day = parseInt(cDate[0]) > 9 ? cDate[0] : "0" + cDate[0];
+        const month = parseInt(cDate[1]) > 9 ? cDate[1] : "0" + cDate[1];
+
+        calendarInformation.date = `${day}/${month}-${year}`;
+    } else {
+        const startData = (calendarInformation.date.start).split("-");
+        const endData = (calendarInformation.date.end).split("-");
+        
+        const startCData = startData[0].split("/");
+        const endCData = endData[0].split("/");
+
+        const startDay = parseInt(startCData[0]) > 9 ? startCData[0] : "0" + startCData[0];
+        const startMonth = parseInt(startCData[1]) > 9 ? startCData[1] : "0" + startCData[1];
+        const startYear = startData[1];
+
+        const endDay = parseInt(endCData[0]) > 9 ? endCData[0] : "0" + endCData[0];
+        const endMonth = parseInt(endCData[1]) > 9 ? endCData[1] : "0" + endCData[1];
+        const endYear = endData[1];
+
+        calendarInformation.date.start = `${startDay}/${startMonth}-${startYear}`;
+        calendarInformation.date.end = `${endDay}/${endMonth}-${endYear}`;
+    }
+
     return calendarInformation;
+}
+
+function checkDateTime(lectioEvent: LectioCalendar, googleEvent: LectioCalendar) {
+    let cDate: boolean = false;
+    let cTime: boolean = false;
+
+    if (typeof lectioEvent.date === typeof googleEvent.date) {
+        if (typeof lectioEvent.date === "string" && typeof googleEvent.date === "string") {
+            if (lectioEvent.date === googleEvent.date) {
+                cDate = true;
+            } else {
+                cDate = false;
+            }
+        } else {
+            const startDate = (lectioEvent.date as LectioEvent).start === (googleEvent.date as LectioEvent).start;
+            const endDate = (lectioEvent.date as LectioEvent).end === (googleEvent.date as LectioEvent).end;
+
+            if (startDate === true && endDate === true) {
+                cDate = true;
+            } else {
+                cDate = false;
+            }
+        }
+    } else {
+        cDate = false;
+    }
+
+    if (typeof lectioEvent.time === typeof googleEvent.time) {
+        if (typeof lectioEvent.time === "string" && typeof googleEvent.time === "string") {
+            if (lectioEvent.time === googleEvent.time) {
+                cTime = true;
+            } else {
+                cTime = false;
+            }
+        } else {
+            const startTime = (lectioEvent.time as LectioEvent).start === (googleEvent.time as LectioEvent).start;
+            const endTime = (lectioEvent.time as LectioEvent).end === (googleEvent.time as LectioEvent).end;
+
+            if (startTime === true && endTime === true) {
+                cTime = true;
+            } else {
+                cTime = false;
+            }
+        }
+    } else {
+        cTime = false;
+    }
+
+    if (cDate === true && cTime === true) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 async function getLectioCalendar(lectioInformation: LectioInformation, lectioTeams: LectioTeams, date: string) {
@@ -334,10 +440,15 @@ async function getLectioCalendar(lectioInformation: LectioInformation, lectioTea
 
     for (const calendarIndex in calendarElements) {
         if (calendarElements[calendarIndex].includes("s2skemabrik")) {
-            const lectioCalendarInformation = getLectioCalendarInformation(calendarElements, parseInt(calendarIndex), lectioTeams);
+            const lectioCalendarInformation = await getLectioCalendarInformation(calendarElements, parseInt(calendarIndex), lectioTeams);
             
             if (lectioCalendarInformation !== undefined) {
-                lectioCalendar.push(lectioCalendarInformation);
+                const lectioIndex = lectioCalendar.findIndex((event) => 
+                    event.label === lectioCalendarInformation.label && checkDateTime(lectioCalendarInformation, event) === true);
+
+                if (lectioIndex === -1) {
+                    lectioCalendar.push(lectioCalendarInformation);
+                }
             }
         }
     }
@@ -377,9 +488,11 @@ function getGoogleDates(dates: Array<string>) {
 
         const day = 1 + (week - 1) * 7;
         const googleDate = new Date(year, 0, day + 1);
+
         googleDates.push(googleDate)
     }
 
+    googleDates[1].setDate(googleDates[1].getDate() + 7);
     return googleDates;
 }
 

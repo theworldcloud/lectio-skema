@@ -82,6 +82,9 @@ function getEndOfInformation(calender, position, special) {
         if (calendarInputs[input].includes('">\r')) {
             return parseInt(input) + position + 2;
         }
+        else if (calendarInputs[input].includes("'>\r")) {
+            return parseInt(input) + position + 2;
+        }
     }
     return 0;
 }
@@ -132,6 +135,10 @@ function isAvailable(label) {
         return false;
     if (label.includes("ekskursion") === true)
         return false;
+    if (label.includes("samtale") === true)
+        return false;
+    if (label.includes("møde") === true)
+        return false;
     return true;
 }
 function getSpecialInformation(information) {
@@ -140,6 +147,8 @@ function getSpecialInformation(information) {
         if (parseInt(index) <= endOfInformation) {
             information[index] = information[index].replace('\r', "");
             information[index] = information[index].replace('">', "");
+            information[index] = information[index].replace("'>", "");
+            information[index] = information[index].replace(" [...]", "");
         }
     }
     if (information.length - 1 > endOfInformation) {
@@ -147,169 +156,265 @@ function getSpecialInformation(information) {
             delete information[index];
         }
     }
-    return information.join(" ");
+    information = information.filter((element) => element !== "");
+    return information.join("\n");
 }
 function getLectioCalendarInformation(calender, position, teams) {
-    if (calender[position].includes("span"))
-        return undefined;
-    if (calender[position].includes("s2skemabrikInnerContainer"))
-        return undefined;
-    if (calender[position].includes("withMediaQuery"))
-        return undefined;
-    const startOfInformation = position;
-    const endOfInformation = getEndOfInformation(calender, position, false);
-    const informationInputs = calender.slice(startOfInformation, endOfInformation);
-    if (informationInputs.length === 0)
-        return undefined;
-    if (informationInputs[1].includes("Hele dagen")) {
-        const label = informationInputs[0].split('data-additionalInfo="')[1];
-        const date = informationInputs[1].split(" ")[0];
-        for (const event of types_1.IGNORED_EVENTS) {
-            if ((label.toLowerCase()).includes(event) === true)
+    return __awaiter(this, void 0, void 0, function* () {
+        if (calender[position].includes("span"))
+            return undefined;
+        if (calender[position].includes("s2skemabrikInnerContainer"))
+            return undefined;
+        if (calender[position].includes("withMediaQuery"))
+            return undefined;
+        const startOfInformation = position;
+        const endOfInformation = getEndOfInformation(calender, position, false);
+        const informationInputs = calender.slice(startOfInformation, endOfInformation);
+        if (informationInputs.length === 0)
+            return undefined;
+        if (informationInputs[1].includes("Hele dagen")) {
+            const label = informationInputs[0].split('data-additionalInfo=')[1].replace("'", "").replace('"', "");
+            let date = informationInputs[1].split(" ")[0];
+            if (label === undefined)
                 return undefined;
+            for (const event of types_1.IGNORED_EVENTS) {
+                if ((label.toLowerCase()).includes(event) === true)
+                    return undefined;
+            }
+            const data = (date).split("-");
+            const year = data[1];
+            const cDate = data[0].split("/");
+            const day = parseInt(cDate[0]) > 9 ? cDate[0] : "0" + cDate[0];
+            const month = parseInt(cDate[1]) > 9 ? cDate[1] : "0" + cDate[1];
+            date = `${day}/${month}-${year}`;
+            return {
+                label: label,
+                date: date,
+                time: "all-day",
+                available: true,
+                cancelled: false,
+                teachers: [],
+                locations: [],
+                notes: undefined,
+                homework: undefined
+            };
         }
-        return {
-            label: label,
-            date: date,
-            time: "all-day",
-            available: true,
-            cancelled: false,
-            teachers: [],
-            locations: [],
-            notes: undefined,
-            homework: undefined
-        };
-    }
-    const test = informationInputs[0].split('data-additionalInfo="')[1];
-    if (test === undefined)
-        return undefined;
-    if (test === "Studiecafé" || test === "FLEX-modul")
-        return undefined;
-    const calendarInformation = {};
-    calendarInformation.cancelled = false;
-    calendarInformation.notes = undefined;
-    calendarInformation.homework = undefined;
-    if (isDate(test)) {
-        const times = test.split(" ");
-        if (times.length === 5) {
-            calendarInformation.date = { start: times[0], end: times[3] };
-            calendarInformation.time = { start: times[1], end: times[4] };
+        let test = informationInputs[0].split('data-additionalInfo=')[1];
+        if (test === undefined)
+            return undefined;
+        test = test.replace("'", "").replace('"', "");
+        if (test === "Studiecafé" || test === "FLEX-modul")
+            return undefined;
+        const calendarInformation = {};
+        calendarInformation.cancelled = false;
+        calendarInformation.notes = undefined;
+        calendarInformation.homework = undefined;
+        if (isDate(test)) {
+            const times = test.split(" ");
+            if (times.length === 5) {
+                calendarInformation.date = { start: times[0], end: times[3] };
+                calendarInformation.time = { start: times[1], end: times[4] };
+            }
+            else {
+                calendarInformation.date = times[0];
+                calendarInformation.time = { start: times[1], end: times[3] };
+            }
         }
         else {
-            calendarInformation.date = times[0];
-            calendarInformation.time = { start: times[1], end: times[3] };
+            for (const input in informationInputs) {
+                if (isDate(informationInputs[input]) === true) {
+                    const times = informationInputs[input].split(" ");
+                    if (times.length === 5) {
+                        calendarInformation.date = { start: times[0], end: times[3] };
+                        calendarInformation.time = { start: times[1], end: times[4] };
+                    }
+                    else {
+                        calendarInformation.date = times[0];
+                        calendarInformation.time = { start: times[1], end: times[3] };
+                    }
+                    break;
+                }
+            }
+        }
+        if (isState(test)) {
+            if (test.includes("Aflyst!"))
+                calendarInformation.cancelled = true;
+            if (test.includes("Ændret!"))
+                calendarInformation.cancelled = false;
+        }
+        if (isLabel(test)) {
+            calendarInformation.label = test;
+        }
+        if (calendarInformation.label === undefined && isLabel(informationInputs[1]) === true)
+            calendarInformation.label = informationInputs[1];
+        for (const input in informationInputs) {
+            const infInput = informationInputs[input];
+            if (calendarInformation.label !== undefined && infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
+                let data = infInput.split("Hold: ")[1].split(" ");
+                data[1] = data[1].replace(",", "");
+                if (data[1].includes("stm") === true || data[1].includes("vrk") === true) {
+                    data = [data[0], data[1]];
+                }
+                let label = teams[data[1].toUpperCase()];
+                const teamData = data[1].split("-");
+                if (teamData.length === 2)
+                    label = teams[teamData[1].toUpperCase()];
+                if (data.length > 2) {
+                    if (calendarInformation.label === undefined)
+                        return undefined;
+                    calendarInformation.label = calendarInformation.label;
+                }
+                else {
+                    calendarInformation.label = `${data[0]} ${data[1].toLowerCase()} (${label}) | ${calendarInformation.label}`;
+                }
+            }
+            if (calendarInformation.label === undefined && infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
+                let data = infInput.split("Hold: ")[1].split(" ");
+                data[1] = data[1].replace(",", "");
+                if (data[1].includes("stm") === true || data[1].includes("vrk") === true) {
+                    data = [data[0], data[1]];
+                }
+                let label = teams[data[1].toUpperCase()];
+                const teamData = data[1].split("-");
+                if (teamData.length === 2)
+                    label = teams[teamData[1].toUpperCase()];
+                if (data.length > 2) {
+                    if (calendarInformation.label === undefined)
+                        return undefined;
+                    calendarInformation.label = calendarInformation.label;
+                }
+                else {
+                    calendarInformation.label = `${data[0]} ${data[1].toLowerCase()} (${label})`;
+                }
+            }
+            if (infInput.includes("Lærer:")) {
+                const teacherElements = infInput.split("Lærer: ")[1].split(" ");
+                let teacher = teacherElements[teacherElements.length - 1];
+                teacher = teacher.replace("(", "");
+                teacher = teacher.replace(")", "");
+                teacher = teacher.replace('">\r', "");
+                teacher = teacher.replace("'>\r", "");
+                calendarInformation.teachers = [teacher];
+            }
+            if (infInput.includes("Lærere:")) {
+                const teachers = infInput.split("Lærere: ")[1].split(", ");
+                teachers[teachers.length - 1] = teachers[teachers.length - 1].replace('">\r', "");
+                teachers[teachers.length - 1] = teachers[teachers.length - 1].replace("'>\r", "");
+                calendarInformation.teachers = teachers;
+            }
+            if (infInput.includes("Lokale:")) {
+                const location = infInput.split("Lokale: ")[1].replace('">\r', "").replace("'>\r", "");
+                calendarInformation.locations = [location];
+            }
+            if (infInput.includes("Lokaler:")) {
+                const locations = infInput.split("Lokaler: ")[1].replace('">\r', "").replace("'>\r", "").split(", ");
+                locations[locations.length - 1] = locations[locations.length - 1].replace('">\r', "").replace("'>\r", "");
+                calendarInformation.locations = locations;
+            }
+            if (infInput.includes("Note:")) {
+                let notes = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+                if (notes !== undefined)
+                    notes = (notes).replace("[...]", "");
+                calendarInformation.notes = notes;
+            }
+            if (infInput.includes("Lektier:")) {
+                let homework = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
+                if (homework !== undefined)
+                    homework = (homework).replace("[...]", "");
+                calendarInformation.homework = homework;
+            }
+        }
+        if (calendarInformation.label !== undefined && isLabel(informationInputs[1]) === true) {
+            const extraLabel = informationInputs[1];
+            if (extraLabel.includes("Hold:") === false && calendarInformation.label !== extraLabel) {
+                calendarInformation.label = calendarInformation.label + " | " + extraLabel;
+            }
+        }
+        if (calendarInformation.teachers === undefined)
+            calendarInformation.teachers = [];
+        if (calendarInformation.locations === undefined)
+            calendarInformation.locations = [];
+        calendarInformation.available = isAvailable(calendarInformation.label);
+        if (typeof calendarInformation.date === "string") {
+            const data = (calendarInformation.date).split("-");
+            const year = data[1];
+            const cDate = data[0].split("/");
+            const day = parseInt(cDate[0]) > 9 ? cDate[0] : "0" + cDate[0];
+            const month = parseInt(cDate[1]) > 9 ? cDate[1] : "0" + cDate[1];
+            calendarInformation.date = `${day}/${month}-${year}`;
+        }
+        else {
+            const startData = (calendarInformation.date.start).split("-");
+            const endData = (calendarInformation.date.end).split("-");
+            const startCData = startData[0].split("/");
+            const endCData = endData[0].split("/");
+            const startDay = parseInt(startCData[0]) > 9 ? startCData[0] : "0" + startCData[0];
+            const startMonth = parseInt(startCData[1]) > 9 ? startCData[1] : "0" + startCData[1];
+            const startYear = startData[1];
+            const endDay = parseInt(endCData[0]) > 9 ? endCData[0] : "0" + endCData[0];
+            const endMonth = parseInt(endCData[1]) > 9 ? endCData[1] : "0" + endCData[1];
+            const endYear = endData[1];
+            calendarInformation.date.start = `${startDay}/${startMonth}-${startYear}`;
+            calendarInformation.date.end = `${endDay}/${endMonth}-${endYear}`;
+        }
+        return calendarInformation;
+    });
+}
+function checkDateTime(lectioEvent, googleEvent) {
+    let cDate = false;
+    let cTime = false;
+    if (typeof lectioEvent.date === typeof googleEvent.date) {
+        if (typeof lectioEvent.date === "string" && typeof googleEvent.date === "string") {
+            if (lectioEvent.date === googleEvent.date) {
+                cDate = true;
+            }
+            else {
+                cDate = false;
+            }
+        }
+        else {
+            const startDate = lectioEvent.date.start === googleEvent.date.start;
+            const endDate = lectioEvent.date.end === googleEvent.date.end;
+            if (startDate === true && endDate === true) {
+                cDate = true;
+            }
+            else {
+                cDate = false;
+            }
         }
     }
     else {
-        for (const input in informationInputs) {
-            if (isDate(informationInputs[input]) === true) {
-                const times = informationInputs[input].split(" ");
-                if (times.length === 5) {
-                    calendarInformation.date = { start: times[0], end: times[3] };
-                    calendarInformation.time = { start: times[1], end: times[4] };
-                }
-                else {
-                    calendarInformation.date = times[0];
-                    calendarInformation.time = { start: times[1], end: times[3] };
-                }
-                break;
-            }
-        }
+        cDate = false;
     }
-    if (isState(test)) {
-        if (test.includes("Aflyst!"))
-            calendarInformation.cancelled = true;
-        if (test.includes("Ændret!"))
-            calendarInformation.cancelled = false;
-    }
-    if (isLabel(test)) {
-        calendarInformation.label = test;
-    }
-    if (calendarInformation.label === undefined && isLabel(informationInputs[1]) === true)
-        calendarInformation.label = informationInputs[1];
-    for (const input in informationInputs) {
-        const infInput = informationInputs[input];
-        if (calendarInformation.label !== undefined && infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
-            let data = infInput.split("Hold: ")[1].split(" ");
-            data[1] = data[1].replace(",", "");
-            if (data[1].includes("stm") === true || data[1].includes("vrk") === true) {
-                data = [data[0], data[1]];
-            }
-            let label = teams[data[1].toUpperCase()];
-            const teamData = data[1].split("-");
-            if (teamData.length === 2)
-                label = teams[teamData[1].toUpperCase()];
-            if (data.length > 2) {
-                if (calendarInformation.label === undefined)
-                    return undefined;
-                calendarInformation.label = calendarInformation.label;
+    if (typeof lectioEvent.time === typeof googleEvent.time) {
+        if (typeof lectioEvent.time === "string" && typeof googleEvent.time === "string") {
+            if (lectioEvent.time === googleEvent.time) {
+                cTime = true;
             }
             else {
-                calendarInformation.label = `${data[0]} ${data[1].toLowerCase()} (${label}) | ${calendarInformation.label}`;
+                cTime = false;
             }
         }
-        if (calendarInformation.label === undefined && infInput.includes("Hold:") === true && infInput.includes("Alle") === false) {
-            let data = infInput.split("Hold: ")[1].split(" ");
-            data[1] = data[1].replace(",", "");
-            if (data[1].includes("stm") === true || data[1].includes("vrk") === true) {
-                data = [data[0], data[1]];
-            }
-            let label = teams[data[1].toUpperCase()];
-            const teamData = data[1].split("-");
-            if (teamData.length === 2)
-                label = teams[teamData[1].toUpperCase()];
-            if (data.length > 2) {
-                if (calendarInformation.label === undefined)
-                    return undefined;
-                calendarInformation.label = calendarInformation.label;
+        else {
+            const startTime = lectioEvent.time.start === googleEvent.time.start;
+            const endTime = lectioEvent.time.end === googleEvent.time.end;
+            if (startTime === true && endTime === true) {
+                cTime = true;
             }
             else {
-                calendarInformation.label = `${data[0]} ${data[1].toLowerCase()} (${label})`;
+                cTime = false;
             }
         }
-        if (infInput.includes("Lærer:")) {
-            const teacherElements = infInput.split("Lærer: ")[1].split(" ");
-            let teacher = teacherElements[teacherElements.length - 1];
-            teacher = teacher.replace("(", "");
-            teacher = teacher.replace(")", "");
-            teacher = teacher.replace('">\r', "");
-            calendarInformation.teachers = [teacher];
-        }
-        if (infInput.includes("Lærere:")) {
-            const teachers = infInput.split("Lærere: ")[1].split(", ");
-            teachers[teachers.length - 1] = teachers[teachers.length - 1].replace('">\r', "");
-            calendarInformation.teachers = teachers;
-        }
-        if (infInput.includes("Lokale:")) {
-            const location = infInput.split("Lokale: ")[1].replace('">\r', "");
-            calendarInformation.locations = [location];
-        }
-        if (infInput.includes("Lokaler:")) {
-            const locations = infInput.split("Lokaler: ")[1].replace('">\r', "").split(", ");
-            locations[locations.length - 1] = locations[locations.length - 1].replace('">\r', "");
-            calendarInformation.locations = locations;
-        }
-        if (infInput.includes("Note:")) {
-            const notes = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
-            calendarInformation.notes = notes;
-        }
-        if (infInput.includes("Lektier:")) {
-            const homework = getSpecialInformation(informationInputs.slice(parseInt(input) + 1, informationInputs.length));
-            calendarInformation.homework = homework;
-        }
     }
-    if (calendarInformation.label !== undefined && isLabel(informationInputs[1]) === true) {
-        const extraLabel = informationInputs[1];
-        if (extraLabel.includes("Hold:") === false && calendarInformation.label !== extraLabel) {
-            calendarInformation.label = calendarInformation.label + " | " + extraLabel;
-        }
+    else {
+        cTime = false;
     }
-    if (calendarInformation.teachers === undefined)
-        calendarInformation.teachers = [];
-    if (calendarInformation.locations === undefined)
-        calendarInformation.locations = [];
-    calendarInformation.available = isAvailable(calendarInformation.label);
-    return calendarInformation;
+    if (cDate === true && cTime === true) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 function getLectioCalendar(lectioInformation, lectioTeams, date) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -321,9 +426,12 @@ function getLectioCalendar(lectioInformation, lectioTeams, date) {
         const lectioCalendar = [];
         for (const calendarIndex in calendarElements) {
             if (calendarElements[calendarIndex].includes("s2skemabrik")) {
-                const lectioCalendarInformation = getLectioCalendarInformation(calendarElements, parseInt(calendarIndex), lectioTeams);
+                const lectioCalendarInformation = yield getLectioCalendarInformation(calendarElements, parseInt(calendarIndex), lectioTeams);
                 if (lectioCalendarInformation !== undefined) {
-                    lectioCalendar.push(lectioCalendarInformation);
+                    const lectioIndex = lectioCalendar.findIndex((event) => event.label === lectioCalendarInformation.label && checkDateTime(lectioCalendarInformation, event) === true);
+                    if (lectioIndex === -1) {
+                        lectioCalendar.push(lectioCalendarInformation);
+                    }
                 }
             }
         }
@@ -357,6 +465,7 @@ function getGoogleDates(dates) {
         const googleDate = new Date(year, 0, day + 1);
         googleDates.push(googleDate);
     }
+    googleDates[1].setDate(googleDates[1].getDate() + 7);
     return googleDates;
 }
 function lectio() {
