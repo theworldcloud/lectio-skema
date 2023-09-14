@@ -1,4 +1,3 @@
-import express, { Express, Request, Response } from 'express';
 import * as dotenv from "dotenv";
 
 import { lectio } from "./lectio";
