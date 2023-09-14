@@ -31,14 +31,25 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.application = void 0;
 const dotenv = __importStar(require("dotenv"));
+const express_1 = __importDefault(require("express"));
 const lectio_1 = require("./lectio");
 const calendar_1 = require("./calendar");
 const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
 const HOURS = 60 * MINUTES;
 dotenv.config();
+exports.application = (0, express_1.default)();
+exports.application.use(express_1.default.static("public"));
+exports.application.use(express_1.default.json());
+exports.application.use(express_1.default.urlencoded({ extended: true }));
+exports.application.listen(3000, () => console.info("Started application!"));
+exports.application.get("/", (request, response) => { return response.send(":)"); });
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const data = new Date().toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" });
@@ -59,5 +70,5 @@ function main() {
         console.log(" ");
     });
 }
-main();
-setInterval(main, 7 * HOURS);
+// main();
+// setInterval(main, 7 * HOURS);

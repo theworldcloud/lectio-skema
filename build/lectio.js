@@ -8,13 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.lectio = void 0;
+const node_fetch_1 = __importDefault(require("node-fetch"));
 const types_1 = require("./types");
 function getLectioInformation() {
     var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
-        const site = yield fetch(`https://www.lectio.dk/lectio/${process.env.LECTIO}/login.aspx`);
+        const site = yield (0, node_fetch_1.default)(`https://www.lectio.dk/lectio/${process.env.LECTIO}/login.aspx`);
         const html = yield site.text();
         const validationElement = html.split("\n").find((line) => line.includes("__EVENTVALIDATION"));
         if (validationElement === undefined)
@@ -34,6 +38,7 @@ function generateLectioCredentials(eventValidation) {
     const formdata = new FormData();
     const username = atob((_a = process.env.LECTIO_USERNAME) !== null && _a !== void 0 ? _a : "");
     const password = atob((_b = process.env.LECTIO_PASSWORD) !== null && _b !== void 0 ? _b : "");
+    console.log(username, password);
     formdata.append("m$Content$username", username !== null && username !== void 0 ? username : "");
     formdata.append("m$Content$password", password !== null && password !== void 0 ? password : "");
     formdata.append("m$Content$passwordHidden", password !== null && password !== void 0 ? password : "");
@@ -46,7 +51,7 @@ function generateLectioCredentials(eventValidation) {
 }
 function lectioFetch(url, lectioInformation) {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield fetch(`https://www.lectio.dk/lectio/${process.env.LECTIO}/${url}`, {
+        const res = yield (0, node_fetch_1.default)(`https://www.lectio.dk/lectio/${process.env.LECTIO}/${url}`, {
             method: "POST",
             headers: { "Cookie": `ASP.NET_SessionId=${lectioInformation.sessionIdentifier}` },
             body: generateLectioCredentials(lectioInformation.eventValidation),
