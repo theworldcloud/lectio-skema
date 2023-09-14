@@ -48,7 +48,6 @@ exports.application = (0, express_1.default)();
 exports.application.use(express_1.default.static("public"));
 exports.application.use(express_1.default.json());
 exports.application.use(express_1.default.urlencoded({ extended: true }));
-exports.application.listen(3000, () => console.info("Started application!"));
 exports.application.get("/", (request, response) => { return response.send(":)"); });
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -70,5 +69,8 @@ function main() {
         console.log(" ");
     });
 }
-main();
-setInterval(main, 7 * HOURS);
+exports.application.listen(3000, function () {
+    console.log("Started application! Port: 3000");
+    main();
+    setInterval(main, 7 * HOURS);
+});

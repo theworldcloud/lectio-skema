@@ -38,6 +38,8 @@ async function main() {
 }
 
 application.listen(3000, function() {
+    console.log("Started application! Port: 3000");
+    
     main();
     setInterval(main, 7 * HOURS);
 });
