@@ -13,8 +13,6 @@ export const application:Express = express();
 application.use(express.static("public"));
 application.use(express.json());
 application.use(express.urlencoded({ extended: true }));
-
-application.listen(3000, () => console.info("Started application!"));
 application.get("/", (request:Request, response:Response) => { return response.send(":)"); });
 
 async function main() {
@@ -39,5 +37,7 @@ async function main() {
     console.log(" ");
 }
 
-main();
-setInterval(main, 7 * HOURS);
+application.listen(3000, function() {
+    main();
+    setInterval(main, 7 * HOURS);
+});
