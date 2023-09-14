@@ -300,10 +300,6 @@ function calendar(dates, lectioCalendar) {
                     continue;
                 }
             }
-            else {
-                dEvents.push(googleEventData.id);
-                continue;
-            }
         }
         yield deleteEvents(googleCalendar, dEvents);
         yield insertEvents(googleCalendar, iEvents);

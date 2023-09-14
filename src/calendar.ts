@@ -326,9 +326,6 @@ export async function calendar(dates: Array<string>, lectioCalendar: Array<Lecti
                 dEvents.push(googleEventData.id!);
                 continue;
             }
-        } else {
-            dEvents.push(googleEventData.id!);
-            continue;
         }
     }
 
