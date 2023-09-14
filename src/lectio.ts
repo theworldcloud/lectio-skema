@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { LectioInformation, LectioTeams, LectioCalendar, LectioEvent, IGNORED_EVENTS, TEAM, CLASS } from "./types";
 
 async function getLectioInformation(): Promise<LectioInformation | undefined> {

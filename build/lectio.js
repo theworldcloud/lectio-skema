@@ -8,17 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.lectio = void 0;
-const node_fetch_1 = __importDefault(require("node-fetch"));
 const types_1 = require("./types");
 function getLectioInformation() {
     var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
-        const site = yield (0, node_fetch_1.default)(`https://www.lectio.dk/lectio/${process.env.LECTIO}/login.aspx`);
+        const site = yield fetch(`https://www.lectio.dk/lectio/${process.env.LECTIO}/login.aspx`);
         const html = yield site.text();
         const validationElement = html.split("\n").find((line) => line.includes("__EVENTVALIDATION"));
         if (validationElement === undefined)
@@ -51,7 +47,7 @@ function generateLectioCredentials(eventValidation) {
 }
 function lectioFetch(url, lectioInformation) {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield (0, node_fetch_1.default)(`https://www.lectio.dk/lectio/${process.env.LECTIO}/${url}`, {
+        const res = yield fetch(`https://www.lectio.dk/lectio/${process.env.LECTIO}/${url}`, {
             method: "POST",
             headers: { "Cookie": `ASP.NET_SessionId=${lectioInformation.sessionIdentifier}` },
             body: generateLectioCredentials(lectioInformation.eventValidation),
