@@ -24,8 +24,6 @@ function generateLectioCredentials(eventValidation: string): FormData {
     const username = atob(process.env.LECTIO_USERNAME ?? "");
     const password = atob(process.env.LECTIO_PASSWORD ?? "");
 
-    console.log(username, password);
-
     formdata.append("m$Content$username", username ?? "");
     formdata.append("m$Content$password", password ?? "");
     formdata.append("m$Content$passwordHidden", password ?? "");
