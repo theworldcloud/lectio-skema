@@ -70,5 +70,5 @@ function main() {
         console.log(" ");
     });
 }
-// main();
-// setInterval(main, 7 * HOURS);
+main();
+setInterval(main, 7 * HOURS);
