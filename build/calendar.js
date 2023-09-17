@@ -72,7 +72,7 @@ function insertEvents(googleCalendar, lectioEvents) {
             const googleEvent = {
                 summary: `${lectioEvent.label}`,
                 description: "Svendborg Gymnasium",
-                colorId: "10",
+                colorId: "2",
                 transparency: lectioEvent.available === false ? "opaque" : "transparent",
                 status: lectioEvent.cancelled === true ? "cancelled" : "confirmed",
             };

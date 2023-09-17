@@ -39,11 +39,6 @@ const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
 const HOURS = 60 * MINUTES;
 dotenv.config();
-// export const application:Express = express();
-// application.use(express.static("public"));
-// application.use(express.json());
-// application.use(express.urlencoded({ extended: true }));
-// application.get("/", (request:Request, response:Response) => { return response.send(":)"); });
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const data = new Date().toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" });
@@ -64,8 +59,4 @@ function main() {
         console.log(" ");
     });
 }
-// application.listen(3000, function() {
-//     console.log("Started application! Port: 3000");
 main();
-// setInterval(main, 7 * HOURS);
-// });
