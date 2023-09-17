@@ -1,5 +1,4 @@
 import * as dotenv from "dotenv";
-import express, { Express, Request, Response } from "express";
 
 import { lectio } from "./lectio";
 import { calendar } from "./calendar";
@@ -9,11 +8,6 @@ const MINUTES = 60 * SECONDS;
 const HOURS = 60 * MINUTES;
 
 dotenv.config();
-// export const application:Express = express();
-// application.use(express.static("public"));
-// application.use(express.json());
-// application.use(express.urlencoded({ extended: true }));
-// application.get("/", (request:Request, response:Response) => { return response.send(":)"); });
 
 async function main() {
     const data = new Date().toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" });
@@ -37,9 +31,4 @@ async function main() {
     console.log(" ");
 }
 
-// application.listen(3000, function() {
-//     console.log("Started application! Port: 3000");
-
 main();
-setInterval(main, 7 * HOURS);
-// });

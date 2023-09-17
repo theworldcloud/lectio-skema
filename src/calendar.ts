@@ -71,7 +71,7 @@ async function insertEvents(googleCalendar: calendar_v3.Calendar, lectioEvents: 
         const googleEvent:calendar_v3.Schema$Event = {
             summary: `${lectioEvent.label}`,
             description: "Svendborg Gymnasium",
-            colorId: "10",
+            colorId: "2",
             transparency: lectioEvent.available === false ? "opaque" : "transparent",
             status: lectioEvent.cancelled === true ? "cancelled" : "confirmed",
         }
