@@ -20,6 +20,16 @@ async function main() {
     console.log(`[ ${now} ] Updating calendar...`);
 
     const [ lectioCalendar, dates ] = await lectio();
+    
+    if (lectioCalendar.length === 0) {
+        console.log(" ");
+        console.log(`[ ${now} ] No events from lectio?! Maybe an error?!`);
+        console.log(" ");
+        console.log(" ");
+
+        return;
+    }
+
     const [ iEvents, dEvents, aEvents ] = await calendar(dates, lectioCalendar);
 
     console.log(" ");

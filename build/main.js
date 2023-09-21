@@ -49,6 +49,13 @@ function main() {
         console.log(" ");
         console.log(`[ ${now} ] Updating calendar...`);
         const [lectioCalendar, dates] = yield (0, lectio_1.lectio)();
+        if (lectioCalendar.length === 0) {
+            console.log(" ");
+            console.log(`[ ${now} ] No events from lectio?! Maybe an error?!`);
+            console.log(" ");
+            console.log(" ");
+            return;
+        }
         const [iEvents, dEvents, aEvents] = yield (0, calendar_1.calendar)(dates, lectioCalendar);
         console.log(" ");
         console.log(`[ ${now} ]`);

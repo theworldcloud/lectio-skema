@@ -509,7 +509,7 @@ export async function lectio(): Promise<any> {
 
     for (const date of dates) {
         const weekCalendar = await getLectioCalendar(lectioInformation, lectioTeams, date);
-        calendar.push(...weekCalendar)
+        calendar.push(...weekCalendar);
     }
 
     return [ calendar, calendarDates ];
