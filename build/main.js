@@ -32,38 +32,64 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.debug = void 0;
 const dotenv = __importStar(require("dotenv"));
 const lectio_1 = require("./lectio");
 const calendar_1 = require("./calendar");
+const google_1 = require("./google");
 const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
 const HOURS = 60 * MINUTES;
+let now = "";
 dotenv.config();
+function debug(message) {
+    if (message === " ")
+        return console.log(" ");
+    return console.log(`[ ${now} ] ${message}`);
+}
+exports.debug = debug;
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const data = new Date().toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" });
         const [date, time] = data.split(" ");
-        const now = `${date.replace(".", "/").replace(".", "/")} - ${time.replace(".", ":").slice(0, 5)}`;
-        console.log(" ");
-        console.log(" ");
-        console.log(" ");
-        console.log(`[ ${now} ] Updating calendar...`);
+        now = `${date.replace(".", "/").replace(".", "/")} - ${time.replace(".", ":").slice(0, 5)}`;
+        debug(" ");
+        debug(" ");
+        debug(" ");
+        debug("Receiving lectio events...");
         const [lectioCalendar, dates] = yield (0, lectio_1.lectio)();
         if (lectioCalendar.length === 0) {
-            console.log(" ");
-            console.log(`[ ${now} ] No events from lectio?! Maybe an error?!`);
-            console.log(" ");
-            console.log(" ");
+            debug("Received no events from lectio?! Maybe an error?!");
+            debug(" ");
+            debug(" ");
+            debug(" ");
             return;
         }
-        const [iEvents, dEvents, aEvents] = yield (0, calendar_1.calendar)(dates, lectioCalendar);
-        console.log(" ");
-        console.log(`[ ${now} ]`);
+        else {
+            debug("Received lectio events successfully!");
+            debug(" ");
+        }
+        const authClient = yield (0, google_1.googleAuthentication)();
+        if (authClient === undefined) {
+            debug("Failed to authenticate google!");
+            debug(" ");
+            debug(" ");
+            debug(" ");
+            return;
+        }
+        else {
+            debug("Authenticated google successfully!");
+            debug(" ");
+        }
+        debug("Updating calendar...");
+        const [iEvents, dEvents, aEvents] = yield (0, calendar_1.calendar)(authClient, dates, lectioCalendar);
+        debug("Updated calendar");
         console.log(`- Inserted ${iEvents} events`);
         console.log(`- Deleted ${dEvents} events`);
-        console.log(`- Updated calendar | ${aEvents} events affected!`);
-        console.log(" ");
-        console.log(" ");
+        console.log(`- ${aEvents} events affected!`);
+        debug(" ");
+        debug(" ");
+        debug(" ");
     });
 }
 main();

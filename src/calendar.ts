@@ -1,12 +1,6 @@
 import { google, calendar_v3 } from "googleapis";
 import { LectioCalendar, LectioEvent } from "./types";
-
-export async function googleAuthentication() {
-    const authClient = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
-    authClient.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-
-    return authClient;
-}
+import { googleAuthentication } from "./google";
 
 function getDateTime(lectioEvent: LectioCalendar) {
     if (lectioEvent.time === "all-day") {
@@ -271,9 +265,8 @@ function checkDateTime(lectioEvent: LectioCalendar, googleEvent: LectioCalendar)
     }
 }
 
-export async function calendar(dates: Array<string>, lectioCalendar: Array<LectioCalendar>) {
+export async function calendar(authClient: any, dates: Array<string>, lectioCalendar: Array<LectioCalendar>) {
     const GOOGLE_CALENDAR = process.env.GOOGLE_CALENDAR;
-    const authClient = await googleAuthentication();
     const googleCalendar = google.calendar({ version: "v3", auth: authClient });
 
     const googleEventData = await googleCalendar.events.list({ maxResults: 2500, calendarId: GOOGLE_CALENDAR, timeMin: dates[0], timeMax: dates[1] });
