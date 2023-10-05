@@ -5,7 +5,6 @@ import { debug } from "./main";
 
 const SCOPES = [ "https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events" ];
 const BROWSER = "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe";
-
 const application = express();
 
 async function getCode(uri: string): Promise<string | undefined> {
@@ -20,10 +19,7 @@ async function getCode(uri: string): Promise<string | undefined> {
             res.send(":)");
             code = req.query.code as string;
         }
-
-
     });
-
 
     spawn(BROWSER, [ "-new-tab", uri ])
 
@@ -32,11 +28,6 @@ async function getCode(uri: string): Promise<string | undefined> {
     }
 
     return code;
-}
-
-
-function test(...args: any) {
-    console.log(args);
 }
 
 export async function googleAuthentication(): Promise<Record<string, any> | undefined> {
@@ -57,7 +48,7 @@ export async function googleAuthentication(): Promise<Record<string, any> | unde
     })
 
     const data = await dataJSON.json();
-    authClient.setCredentials({ refresh_token: data.refresh_token });
+    authClient.setCredentials({ access_token: data.access_token, refresh_token: data.refresh_token });
 
     return authClient;
 }

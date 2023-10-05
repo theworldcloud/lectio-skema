@@ -41,9 +41,6 @@ function getCode(uri) {
         return code;
     });
 }
-function test(...args) {
-    console.log(args);
-}
 function googleAuthentication() {
     return __awaiter(this, void 0, void 0, function* () {
         const authClient = new googleapis_1.google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
@@ -62,7 +59,7 @@ function googleAuthentication() {
             })
         });
         const data = yield dataJSON.json();
-        authClient.setCredentials({ refresh_token: data.refresh_token });
+        authClient.setCredentials({ access_token: data.access_token, refresh_token: data.refresh_token });
         return authClient;
     });
 }
