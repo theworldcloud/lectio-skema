@@ -272,7 +272,7 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
     const googleEventData = await googleCalendar.events.list({ maxResults: 2500, calendarId: GOOGLE_CALENDAR, timeMin: dates[0], timeMax: dates[1] });
     if (googleEventData.data.items === undefined) return [ 0, 0, 0 ];
 
-    const googleEvents = (googleEventData.data.items).filter((event) => (event.description)?.includes("Svendborg Gymnasium"));
+    const googleEvents = (googleEventData.data.items).filter((event) => (event.description)?.includes(process.env.SCHOOL as string));
     const lectioEvents = lectioCalendar.filter((event) => event.cancelled === false);
 
     const rEvents: Array<LectioCalendar> = [ ... lectioEvents ];

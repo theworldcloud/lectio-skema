@@ -4,7 +4,7 @@ import express, { Express, Request, Response } from "express";
 import { debug } from "./main";
 
 const SCOPES = [ "https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events" ];
-const BROWSER = "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe";
+const BROWSER = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const application = express();
 
 async function getCode(uri: string): Promise<string | undefined> {

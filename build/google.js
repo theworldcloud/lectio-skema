@@ -18,7 +18,7 @@ const child_process_1 = require("child_process");
 const express_1 = __importDefault(require("express"));
 const main_1 = require("./main");
 const SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"];
-const BROWSER = "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe";
+const BROWSER = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const application = (0, express_1.default)();
 function getCode(uri) {
     return __awaiter(this, void 0, void 0, function* () {

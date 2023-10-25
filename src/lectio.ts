@@ -344,35 +344,37 @@ async function getLectioCalendarInformation(calender: Array<string>, position: n
     if (calendarInformation.locations === undefined) calendarInformation.locations = [];
     calendarInformation.available = isAvailable(calendarInformation.label);
 
-    if (typeof calendarInformation.date === "string") {
-        const data = (calendarInformation.date).split("-");
-        const year = data[1];
+    if (calendarInformation.date !== undefined) {
+        if (typeof calendarInformation.date === "string") {
+            const data = (calendarInformation.date).split("-");
+            const year = data[1];
+    
+            const cDate = data[0].split("/");
+            const day = parseInt(cDate[0]) > 9 ? cDate[0] : "0" + cDate[0];
+            const month = parseInt(cDate[1]) > 9 ? cDate[1] : "0" + cDate[1];
+    
+            calendarInformation.date = `${day}/${month}-${year}`;
+        } else {
+            const startData = (calendarInformation.date.start).split("-");
+            const endData = (calendarInformation.date.end).split("-");
+            
+            const startCData = startData[0].split("/");
+            const endCData = endData[0].split("/");
+    
+            const startDay = parseInt(startCData[0]) > 9 ? startCData[0] : "0" + startCData[0];
+            const startMonth = parseInt(startCData[1]) > 9 ? startCData[1] : "0" + startCData[1];
+            const startYear = startData[1];
+    
+            const endDay = parseInt(endCData[0]) > 9 ? endCData[0] : "0" + endCData[0];
+            const endMonth = parseInt(endCData[1]) > 9 ? endCData[1] : "0" + endCData[1];
+            const endYear = endData[1];
+    
+            calendarInformation.date.start = `${startDay}/${startMonth}-${startYear}`;
+            calendarInformation.date.end = `${endDay}/${endMonth}-${endYear}`;
+        }
 
-        const cDate = data[0].split("/");
-        const day = parseInt(cDate[0]) > 9 ? cDate[0] : "0" + cDate[0];
-        const month = parseInt(cDate[1]) > 9 ? cDate[1] : "0" + cDate[1];
-
-        calendarInformation.date = `${day}/${month}-${year}`;
-    } else {
-        const startData = (calendarInformation.date.start).split("-");
-        const endData = (calendarInformation.date.end).split("-");
-        
-        const startCData = startData[0].split("/");
-        const endCData = endData[0].split("/");
-
-        const startDay = parseInt(startCData[0]) > 9 ? startCData[0] : "0" + startCData[0];
-        const startMonth = parseInt(startCData[1]) > 9 ? startCData[1] : "0" + startCData[1];
-        const startYear = startData[1];
-
-        const endDay = parseInt(endCData[0]) > 9 ? endCData[0] : "0" + endCData[0];
-        const endMonth = parseInt(endCData[1]) > 9 ? endCData[1] : "0" + endCData[1];
-        const endYear = endData[1];
-
-        calendarInformation.date.start = `${startDay}/${startMonth}-${startYear}`;
-        calendarInformation.date.end = `${endDay}/${endMonth}-${endYear}`;
+        return calendarInformation;
     }
-
-    return calendarInformation;
 }
 
 function checkDateTime(lectioEvent: LectioCalendar, googleEvent: LectioCalendar) {
