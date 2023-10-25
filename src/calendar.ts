@@ -1,6 +1,5 @@
 import { google, calendar_v3 } from "googleapis";
 import { LectioCalendar, LectioEvent } from "./types";
-import { googleAuthentication } from "./google";
 
 function getDateTime(lectioEvent: LectioCalendar) {
     if (lectioEvent.time === "all-day") {

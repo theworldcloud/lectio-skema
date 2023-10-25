@@ -7,11 +7,12 @@
     "forceConsistentCasingInFileNames": true, 
     "strict": true, 
     "skipLibCheck": true,
-    "outDir": "build",
+    "outDir": "./src",
     "rootDir": "./src",
     "resolveJsonModule": true,
-    "baseUrl": "./src"
+    "baseUrl": "./src",
+    "moduleResolution": "node",
   },
-  "include": [ "*.d.ts", "**/*.ts" ],
-  "exclude": [ "tsconfig.json", "package.json" ]
+  "include": [ "**/*.ts" ],
+  "exclude": [ ]
 }

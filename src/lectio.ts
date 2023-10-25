@@ -65,6 +65,7 @@ async function getLectioTeams(lectioInformation: LectioInformation): Promise<Lec
     lectioTeams["STM"] = "Klassetime";
     lectioTeams["VRK"] = "Klassetime";
     lectioTeams["KT"] = "Klassetime";
+    lectioTeams["PP1"] = "Projekt- og praktikperiode";
 
     return lectioTeams;
 }
@@ -335,9 +336,11 @@ async function getLectioCalendarInformation(calender: Array<string>, position: n
     if (calendarInformation.label !== undefined && isLabel(informationInputs[1]) === true) {
         const extraLabel = informationInputs[1];
 
-        if (extraLabel.includes("Hold:") === false && calendarInformation.label !== extraLabel) {
-            calendarInformation.label = calendarInformation.label + " | " + extraLabel;
-        } 
+        if (extraLabel !== calendarInformation.label.split(" | ")[1]) {
+            if (extraLabel.includes("Hold:") === false && calendarInformation.label !== extraLabel) {
+                calendarInformation.label = calendarInformation.label + " | " + extraLabel;
+            } 
+        }
     } 
 
     if (calendarInformation.teachers === undefined) calendarInformation.teachers = [];
