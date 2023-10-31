@@ -1,7 +1,7 @@
 import { google, calendar_v3 } from "googleapis";
-import { LectioCalendar, LectioEvent } from "./types";
+import { LectioEvent, LectioTime } from "./types";
 
-function getDateTime(lectioEvent: LectioCalendar) {
+function getDateTime(lectioEvent: LectioEvent) {
     if (lectioEvent.time === "all-day") {
         const [ day, month ] = (lectioEvent.date as string).slice(0, 5).replace("-", "").split("/");
         const year = (lectioEvent.date as string).slice(-4);
@@ -19,6 +19,7 @@ function getDateTime(lectioEvent: LectioCalendar) {
             const date = new Date();
             date.setFullYear(parseInt(year));
             date.setMonth(parseInt(month) - 1);
+            date.setUTCMonth(parseInt(month) - 1);
             date.setDate(parseInt(day));
 
             const startDate = new Date(date);
@@ -26,7 +27,7 @@ function getDateTime(lectioEvent: LectioCalendar) {
 
             startDate.setHours(parseInt(startHours), parseInt(startMinutes), 0, 0);
             endDate.setHours(parseInt(endHours), parseInt(endMinutes), 0, 0);
-            
+
             return [ startDate.toISOString(), endDate.toISOString() ];
         } else {
             const [ startHours, startMinutes ] = (lectioEvent.time.start as string).split(":");
@@ -56,7 +57,7 @@ function getDateTime(lectioEvent: LectioCalendar) {
     }
 }
 
-async function insertEvents(googleCalendar: calendar_v3.Calendar, lectioEvents: Array<LectioCalendar>) {
+async function insertEvents(googleCalendar: calendar_v3.Calendar, lectioEvents: Array<LectioEvent>) {
     for (const lectioEvent of lectioEvents) {
         if (lectioEvent === undefined) continue;
 
@@ -127,8 +128,8 @@ function findInformation(description: Array<string>) {
 }
 
 function getEventData(googleEvent: calendar_v3.Schema$Event) {
-    let date: string | LectioEvent = undefined as any;
-    let time: "all-day" | LectioEvent = undefined as any;
+    let date: string | LectioTime = undefined as any;
+    let time: "all-day" | LectioTime = undefined as any;
 
     if (googleEvent.start!.date !== undefined) {
         const [ startYear, startMonth, startDay ] = googleEvent.start!.date!.split("-");
@@ -194,7 +195,7 @@ function getEventData(googleEvent: calendar_v3.Schema$Event) {
         }
     }
 
-    const eventData: LectioCalendar = {
+    const eventData: LectioEvent = {
         label: googleEvent.summary!,
         date: date, 
         time: time,
@@ -211,7 +212,7 @@ function getEventData(googleEvent: calendar_v3.Schema$Event) {
     return eventData;
 }
 
-function checkDateTime(lectioEvent: LectioCalendar, googleEvent: LectioCalendar) {
+function checkDateTime(lectioEvent: LectioEvent, googleEvent: LectioEvent) {
     let cDate: boolean = false;
     let cTime: boolean = false;
 
@@ -223,8 +224,8 @@ function checkDateTime(lectioEvent: LectioCalendar, googleEvent: LectioCalendar)
                 cDate = false;
             }
         } else {
-            const startDate = (lectioEvent.date as LectioEvent).start === (googleEvent.date as LectioEvent).start;
-            const endDate = (lectioEvent.date as LectioEvent).end === (googleEvent.date as LectioEvent).end;
+            const startDate = (lectioEvent.date as LectioTime).start === (googleEvent.date as LectioTime).start;
+            const endDate = (lectioEvent.date as LectioTime).end === (googleEvent.date as LectioTime).end;
 
             if (startDate === true && endDate === true) {
                 cDate = true;
@@ -244,8 +245,8 @@ function checkDateTime(lectioEvent: LectioCalendar, googleEvent: LectioCalendar)
                 cTime = false;
             }
         } else {
-            const startTime = (lectioEvent.time as LectioEvent).start === (googleEvent.time as LectioEvent).start;
-            const endTime = (lectioEvent.time as LectioEvent).end === (googleEvent.time as LectioEvent).end;
+            const startTime = (lectioEvent.time as LectioTime).start === (googleEvent.time as LectioTime).start;
+            const endTime = (lectioEvent.time as LectioTime).end === (googleEvent.time as LectioTime).end;
 
             if (startTime === true && endTime === true) {
                 cTime = true;
@@ -264,7 +265,7 @@ function checkDateTime(lectioEvent: LectioCalendar, googleEvent: LectioCalendar)
     }
 }
 
-export async function calendar(authClient: any, dates: Array<string>, lectioCalendar: Array<LectioCalendar>) {
+export async function calendar(authClient: any, dates: Array<string>, lectioCalendar: Array<LectioEvent>) {
     const GOOGLE_CALENDAR = process.env.GOOGLE_CALENDAR;
     const googleCalendar = google.calendar({ version: "v3", auth: authClient });
 
@@ -274,8 +275,8 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
     const googleEvents = (googleEventData.data.items).filter((event) => (event.description)?.includes(process.env.SCHOOL as string));
     const lectioEvents = lectioCalendar.filter((event) => event.cancelled === false);
 
-    const rEvents: Array<LectioCalendar> = [ ... lectioEvents ];
-    const iEvents: Array<LectioCalendar> = [ ... lectioEvents ];
+    const rEvents: Array<LectioEvent> = [ ... lectioEvents ];
+    const iEvents: Array<LectioEvent> = [ ... lectioEvents ];
     const dEvents: Array<string> = [];
 
     for (const googleEIndex in googleEvents) {
@@ -321,7 +322,7 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
         }
     }
 
-    await deleteEvents(googleCalendar, dEvents);
+    // await deleteEvents(googleCalendar, dEvents);
     await insertEvents(googleCalendar, iEvents);
     
     return [ (iEvents.filter(event => event.label)).length, dEvents.length, (iEvents.filter(event => event.label)).length + dEvents.length ];

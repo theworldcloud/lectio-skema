@@ -5,7 +5,8 @@ export const IGNORED_EVENTS = [
     "g-hold", "1.g", "2.g", "3.g", 
     "mus-lejr", "studiecafé", "folkemøde",
     "ledelse", "verdens", "bibliotek", 
-    "tromme", "2.hf", "udveksling"
+    "tromme", "2.hf", "udveksling", "filmaften",
+    "flex", "1g", "2g", "3g", "masterclass"
 ]
 
 export interface LectioInformation {
@@ -14,12 +15,12 @@ export interface LectioInformation {
 }
 
 export type LectioTeams = Record<string, string>;
-export type LectioEvent = { start: string; end: string; };
+export type LectioTime = { start: string; end: string; };
 
-export type LectioCalendar = {
+export type LectioEvent = {
     label: string;
-    date: LectioEvent | string;
-    time: LectioEvent | "all-day";
+    date: LectioTime | string;
+    time: LectioTime | "all-day";
 
     available: boolean;
     cancelled: boolean;
