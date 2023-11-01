@@ -322,7 +322,7 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
         }
     }
 
-    // await deleteEvents(googleCalendar, dEvents);
+    await deleteEvents(googleCalendar, dEvents);
     await insertEvents(googleCalendar, iEvents);
     
     return [ (iEvents.filter(event => event.label)).length, dEvents.length, (iEvents.filter(event => event.label)).length + dEvents.length ];
