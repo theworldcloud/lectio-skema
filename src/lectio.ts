@@ -1,4 +1,5 @@
 import { LectioInformation, LectioTeams, LectioEvent, LectioTime, IGNORED_EVENTS, TEAM, CLASS } from "./types";
+import { debug } from "./main";
 
 async function getLectioInformation(): Promise<LectioInformation | undefined> {
     const site = await fetch(`https://www.lectio.dk/lectio/${process.env.LECTIO}/login.aspx`);
@@ -39,12 +40,21 @@ function generateLectioCredentials(eventValidation: string): FormData {
 async function lectioFetch(url: string, lectioInformation: LectioInformation): Promise<string> {
     const res = await fetch(`https://www.lectio.dk/lectio/${process.env.LECTIO}/${url}`, {
         method: "POST",
-        headers: { "Cookie": `ASP.NET_SessionId=${lectioInformation.sessionIdentifier}` },
         body: generateLectioCredentials(lectioInformation.eventValidation),
+        headers: {  "Cookie": `ASP.NET_SessionId=${lectioInformation.sessionIdentifier};` },
         redirect: "follow"
     });
 
-    return await res.text();
+    // if (res.status !== 200) {
+    //     debug("Failed to fetch lectio! Retrying in 5 seconds...");
+    //     await new Promise((resolve) => setTimeout(resolve, 5000)); 
+    //     return await lectioFetch(url, lectioInformation);
+    // }
+
+    if (res.status !== 200) throw new Error(`Failed to fetch lectio! ${res.status} ${res.statusText}`);
+    
+    const text = await res.text();
+    return await text;
 }
 
 async function getLectioTeams(lectioInformation: LectioInformation): Promise<LectioTeams | undefined> {
@@ -65,9 +75,9 @@ async function getLectioTeams(lectioInformation: LectioInformation): Promise<Lec
     lectioTeams["STM"] = "Klassetime";
     lectioTeams["VRK"] = "Klassetime";
     lectioTeams["KT"] = "Klassetime";
-    lectioTeams["PP1"] = "Projekt- og praktikperiode 1";
-    lectioTeams["PP2"] = "Projekt- og praktikperiode 2";
-    lectioTeams["PP3"] = "Projekt- og praktikperiode 3";
+    lectioTeams["PP1"] = "Projekt- og praktikperiode";
+    lectioTeams["PP2"] = "Projekt- og praktikperiode";
+    lectioTeams["PP3"] = "Projekt- og praktikperiode";
 
     return lectioTeams;
 }
@@ -218,10 +228,18 @@ function isState(state: string) {
     return false;
 }
 
+function isDate(date: string) {
+    if (date.includes("/") === false) return false;
+    if (date.includes("-") === false) return false;
+    if (/[a-zA-Z]/.test(date) === true) return false;
+
+    return true;
+}
+
 function isTime(time: string) {
     if (time.includes(":") === false) return false;
-    if (time.includes("-") === false) return false;
-    if (/[a-zA-Z]/.test(time) === true) return false;
+    if (time.includes("til") === false) return false;
+    if (/[a-hj-km-su-zA-HJ-KM-SU-Z]/.test(time) === true) return false;
     
     return true;
 }
@@ -314,7 +332,7 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
             }
     
             if (isTime(line) === true) {
-                const time = line.split(" - ");
+                const time = line.split(" ").filter((t) => t !== "til" && isDate(t) === false);
                 event.time = { start: time[0], end: time[1] };
 
                 delete lines[index];
@@ -380,7 +398,7 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
                 continue;
             }
 
-            if ((line.toLowerCase()).includes("hold:") === true) {                
+            if ((line.toLowerCase()).includes("hold:") === true) {                                
                 if ((line.toLowerCase()).includes("alle") === true) {
                     delete lines[index];
                     continue;
@@ -394,7 +412,6 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
                     continue;
                 }
     
-
                 const lec = lecs[0];
                 if (lec.includes(TEAM) === false && lec.includes(CLASS) === false) {
                     delete lines[index];
@@ -420,13 +437,15 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
                     continue;
                 }
 
-                event.label = `${team.toLowerCase()} ${lection.toLowerCase()} (${teams[(lection.toUpperCase()) as any]})`;
+                const realTeam = teams[(lection.toUpperCase()) as any];
+                const realLection = realTeam.includes("praktikperiode") === true ? lection.toUpperCase() : lection.toLowerCase();
+                
+                event.label = `${team.toLowerCase()} ${realLection} (${realTeam})`;
                 delete lines[index];
                 continue;
             }
         }
 
-        
         const label = lines.filter((line) => line !== "" && line !== undefined)[0];
         if (label !== undefined) {
             if (isLabel(label) === true) {

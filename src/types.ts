@@ -14,6 +14,11 @@ export interface LectioInformation {
     sessionIdentifier: string;
 }
 
+export interface LectioCookies {
+    sessionIdentifier: string;
+    lectiogsc: string;
+}
+
 export type LectioTeams = Record<string, string>;
 export type LectioTime = { start: string; end: string; };
 
