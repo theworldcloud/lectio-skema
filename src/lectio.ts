@@ -385,6 +385,15 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
 
                 continue;
             }
+            
+            if ((line.toLowerCase()).includes("indhold:") === true) {
+                const end = findEndofInformation(lines, index + 1);
+                for (let del = index; del <= end; del++) {
+                    delete lines[del];
+                }
+                
+                continue;
+            }
 
             if ((line.toLowerCase()).includes("note:") === true) {
                 const end = findEndofInformation(lines, index + 1);
