@@ -1,6 +1,14 @@
 export const CLASS = "1q";
 export const TEAM = "1h";
 
+export const EVENT_TIMES: Record<string, LectioTime> = {
+    "1": { start: "08:05", end: "09:40" },
+    "2": { start: "10:00", end: "11:35" },
+    "3": { start: "12.10", end: "13:45" },
+    "4": { start: "13:55", end: "15:30" },
+    "5": { start: "15:40", end: "17:15" }
+}
+
 export const IGNORED_EVENTS = [ 
     "g-hold", "1.g", "2.g", "3.g", 
     "mus-lejr", "studiecafé", "folkemøde",
@@ -34,4 +42,11 @@ export type LectioEvent = {
     locations: Array<string>;
     notes: string | undefined;
     homework: string | undefined;
+}
+
+export type GoogleEvent = {
+    id: string;
+    label: string;
+    date?: LectioTime | string;
+    time?: LectioTime | "all-day";
 }

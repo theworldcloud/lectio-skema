@@ -4,14 +4,14 @@ import express, { Express, Request, Response } from "express";
 import { debug } from "./main";
 
 const SCOPES = [ "https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events" ];
-const BROWSER = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const application = express();
+export const BROWSER = "C:/Program Files/Google/Chrome/Application/chrome.exe";
+export const application = express();
 
 async function getCode(uri: string): Promise<string | undefined> {
     let code: string | undefined = undefined;
     await application.listen(3000, () => debug("Authenticating google..."));
 
-    application.get("/", (req: Request, res: Response) => {
+    application.get("/", function(req: Request, res: Response) {
         if (req.query.code === undefined) {
             res.send(":(");
             code = "error";
@@ -47,7 +47,7 @@ export async function googleAuthentication(): Promise<Record<string, any> | unde
         })
     })
 
-    const data = await dataJSON.json();
+    const data: any = await dataJSON.json();
     authClient.setCredentials({ access_token: data.access_token, refresh_token: data.refresh_token });
 
     return authClient;

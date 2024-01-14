@@ -1,4 +1,4 @@
-import { LectioInformation, LectioTeams, LectioEvent, LectioTime, IGNORED_EVENTS, TEAM, CLASS } from "./types";
+import { LectioInformation, LectioTeams, LectioEvent, LectioTime, IGNORED_EVENTS, EVENT_TIMES, TEAM, CLASS } from "./types";
 import { debug } from "./main";
 
 async function getLectioInformation(): Promise<LectioInformation | undefined> {
@@ -113,7 +113,7 @@ function getGoogleDates(dates: Array<string>) {
         const year = parseInt(date.substring(2, 6));
 
         const day = 1 + (week - 1) * 7;
-        const googleDate = new Date(year, 0, day + 1);
+        const googleDate = new Date(year, 0, day);
 
         googleDates.push(googleDate)
     }
@@ -195,7 +195,7 @@ function getLectioEventsHTML(elements: Array<string>) {
         const element = elements[index];
         if (events[eventIndex] === undefined) events[eventIndex] = [];
         
-        if (element.includes("data-additionalInfo=") === true) {
+        if (element.includes("data-tooltip=") === true) {
             const end = findEndofAdditionalInfo(elements, index + 1);
             if (end === undefined) continue;
 
@@ -204,7 +204,7 @@ function getLectioEventsHTML(elements: Array<string>) {
             additionalInfo.map((info: string, key: number) => additionalInfo[key] = info.replaceAll("\t", ""));
 
 
-            const dataInfo = additionalInfo[0].includes(`data-additionalInfo="`) === true ? `data-additionalInfo="` : `data-additionalInfo='`; 
+            const dataInfo = additionalInfo[0].includes(`data-tooltip="`) === true ? `data-tooltip="` : `data-tooltip='`; 
             additionalInfo[0] = additionalInfo[0].split(dataInfo)[1];
 
 
@@ -271,13 +271,28 @@ function isAvailable(label: string): boolean {
     return true;
 }
 
+
 function getLectioEventsInformation(teams: LectioTeams, date: string, days: Array<string>, times: Array<string>): Array<LectioEvent> {
     const dayEvents:Array<LectioEvent> = [];
     const timeEvents:Array<LectioEvent> = [];
 
     function findEndofInformation(lines: Array<string>, start: number) {
+        function isNextLineStarting(line: string) {
+            const nextLines = [ "hold:", "lærer:", "læerere:", "lokale:", "lokaler:", "lektier:", "note:", "indhold:" ];
+            
+            for (const nextLine of nextLines) {
+                if ((line.toLowerCase()).includes(nextLine) === true) return true;
+            }
+
+            return false;
+        }
+
         for (let index = start; index < lines.length; index++) {
-            if (lines[index].length === 0) {
+
+
+            const isEnd = lines[index + 1] === undefined || isNextLineStarting(lines[index + 1]);
+            
+            if (lines[index].length === 0 && isEnd === true) {
                 return index;
             }
         }
@@ -313,6 +328,7 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
         });
     }
 
+    let eventIndex = 1;
     for (const time of times) {
         const lines = time.split("\n");
         const event: LectioEvent = {} as any;
@@ -466,6 +482,8 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
             }
         }
 
+        
+
         if (event.teachers === undefined) event.teachers = [];
         if (event.locations === undefined) event.locations = [];
         if (event.homework === undefined) event.homework = undefined;
@@ -481,13 +499,36 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
                 }
             }
 
-            if (isIgnored === false) {
-                timeEvents.push(event);
-            }
+            if (isIgnored === false) timeEvents.push(event);
         }
     }
 
     return [ ...dayEvents, ...timeEvents ];
+}
+
+const HTML_ENTITIES: Record<string, string> = {
+    "amp": "&",
+    "apos": "\'",
+    "#x27": "\'",
+    "#x2F": "/",
+    "#39": "\'",
+    "#47": "/",
+    "lt": "<",
+    "gt": ">",
+    "nbsp": " ",
+    "quot": '"'
+}
+
+function replaceSymbols(lectioEvent: LectioEvent) {
+    function replaceSymbol(str: string, ent: string) {
+        return str.replaceAll(`&${ent};`, HTML_ENTITIES[ent]);
+    }
+
+    for (const entity in HTML_ENTITIES) {
+        lectioEvent.label = replaceSymbol(lectioEvent.label, entity);
+        if (lectioEvent.notes) lectioEvent.notes = replaceSymbol(lectioEvent.notes, entity);
+        if (lectioEvent.homework) lectioEvent.homework = replaceSymbol(lectioEvent.homework, entity);
+    }
 }
 
 async function getLectioEvents(information: LectioInformation, teams: LectioTeams, date: string) {
@@ -520,6 +561,7 @@ async function getLectioEvents(information: LectioInformation, teams: LectioTeam
         const time = (timeEvents as Array<Array<string>>)[index];   
 
         const eventsInformation: Array<LectioEvent> = getLectioEventsInformation(teams, date, day, time);
+        eventsInformation.map(eventInformation => replaceSymbols(eventInformation));
         events.push(...eventsInformation);
     }
 

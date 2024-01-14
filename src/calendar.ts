@@ -1,5 +1,5 @@
 import { google, calendar_v3 } from "googleapis";
-import { LectioEvent, LectioTime } from "./types";
+import { GoogleEvent, LectioEvent, LectioTime } from "./types";
 
 function getDateTime(lectioEvent: LectioEvent) {
     if (lectioEvent.time === "all-day") {
@@ -105,26 +105,37 @@ async function insertEvents(googleCalendar: calendar_v3.Calendar, lectioEvents: 
     }
 }
 
-async function deleteEvents(googleCalendar: calendar_v3.Calendar, googleEvents: Array<string>) {
+async function deleteEvents(googleCalendar: calendar_v3.Calendar, googleEvents: Array<GoogleEvent>) {
     for (const googleEvent of googleEvents) {
-        await googleCalendar.events.delete({ calendarId: process.env.GOOGLE_CALENDAR, eventId: googleEvent });
+        await googleCalendar.events.delete({ calendarId: process.env.GOOGLE_CALENDAR, eventId: googleEvent.id });
         await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     return;
 }
 
-function findInformation(description: Array<string>) {
-    if (description.length > 1) {
-        if (description.includes("") === true) {
-            const index = description.findIndex((line) => line === "");
-            return description.slice(0, index);
+function findEndofInformation(lines: Array<string>, start: number) {
+    function isNextLineStarting(line: string) {
+        const nextLines = [ "hold:", "lærer:", "læerere:", "lokale:", "lokaler:", "lektier:", "note:", "indhold:" ];
+        
+        for (const nextLine of nextLines) {
+            if ((line.toLowerCase()).includes(nextLine) === true) return true;
         }
 
-        return description.slice(0, description.length);
+        return false;
     }
 
-    return description.slice(0, description.length);
+    for (let index = start; index < lines.length; index++) {
+
+
+        const isEnd = lines[index + 1] === undefined || isNextLineStarting(lines[index + 1]);
+        
+        if (lines[index].length === 0 && isEnd === true) {
+            return index;
+        }
+    }
+
+    return lines.length;
 }
 
 function getEventData(googleEvent: calendar_v3.Schema$Event) {
@@ -185,12 +196,14 @@ function getEventData(googleEvent: calendar_v3.Schema$Event) {
         }
 
         if (line.includes("Noter:")) {
-            const notesData = findInformation(description.slice(lineIndex + 1));
+            const notesEnd = findEndofInformation(description, lineIndex + 1);
+            const notesData = description.slice(lineIndex + 1, notesEnd);
             notes = notesData.join("\n");
         }
 
         if (line.includes("Lektier:")) {
-            const homeworkData = findInformation(description.slice(lineIndex + 1));
+            const homeworkEnd = findEndofInformation(description, lineIndex + 1);
+            const homeworkData = description.slice(lineIndex + 1, homeworkEnd);
             homework = homeworkData.join("\n");
         }
     }
@@ -265,30 +278,65 @@ function checkDateTime(lectioEvent: LectioEvent, googleEvent: LectioEvent) {
     }
 }
 
-export async function calendar(authClient: any, dates: Array<string>, lectioCalendar: Array<LectioEvent>) {
+export async function calendar(authClient: any, dates: Array<string>, lectioCalendar: Array<LectioEvent>): Promise<Array<Array<GoogleEvent>>> {
     const GOOGLE_CALENDAR = process.env.GOOGLE_CALENDAR;
     const googleCalendar = google.calendar({ version: "v3", auth: authClient });
 
-    const googleEventData = await googleCalendar.events.list({ maxResults: 2500, calendarId: GOOGLE_CALENDAR, timeMin: dates[0], timeMax: dates[1] });
-    if (googleEventData.data.items === undefined) return [ 0, 0, 0 ];
+    const googleEventData = await googleCalendar.events.list({ orderBy: "startTime", singleEvents: true, maxResults: 2500, calendarId: GOOGLE_CALENDAR, timeMin: dates[0], timeMax: dates[1] });
+    if (googleEventData.data.items === undefined) return [ [], [] ];
 
-    const googleEvents = (googleEventData.data.items).filter((event) => (event.description)?.includes(process.env.SCHOOL as string));
+    const googleEvents = (googleEventData.data.items);
     const lectioEvents = lectioCalendar.filter((event) => event.cancelled === false);
 
     const rEvents: Array<LectioEvent> = [ ... lectioEvents ];
-    const iEvents: Array<LectioEvent> = [ ... lectioEvents ];
-    const dEvents: Array<string> = [];
+    let iEvents: Array<LectioEvent> = [ ... lectioEvents ];
+    let dEvents: Array<GoogleEvent> = [];
 
     for (const googleEIndex in googleEvents) {
         const googleIndex = parseInt(googleEIndex);
         const googleEventData = googleEvents[googleIndex];
+
         const googleEvent = getEventData(googleEventData);
 
         const lectioIndex = lectioEvents.findIndex((event) => 
             event.label === googleEventData.summary && checkDateTime(event, googleEvent) === true);
 
+        const dEventInfo: GoogleEvent = {
+            id: googleEventData.id!, 
+            label: googleEventData.summary!
+        }
+
+        if (googleEventData.start?.timeZone !== undefined && googleEventData.end?.timeZone !== undefined) {
+            let [ startDate, startTime ] = (googleEventData.start.dateTime as string).split("T");
+            startDate = startDate.split("-").reverse().join("-").replace("-", "/");
+            startTime = startTime.split(":00+")[0];
+
+            let [ endDate, endTime ] = (googleEventData.end.dateTime as string).split("T");
+            endDate = endDate.split("-").reverse().join("-").replace("-", "/");
+            endTime = endTime.split(":00+")[0];
+
+            if (startDate === endDate) {
+                dEventInfo.date = startDate;
+            } else {
+                dEventInfo.date = { start: startDate, end: endDate };
+            }
+
+            dEventInfo.time = { start: startTime, end: endTime };
+        } else {
+            const startDate = (googleEventData.start?.date as string).split("-").reverse().join("-").replace("-", "/");
+            const endDate = (googleEventData.end?.date as string).split("-").reverse().join("-").replace("-", "/");
+
+            if (startDate === endDate) {
+                dEventInfo.date = startDate;
+            } else {
+                dEventInfo.date = { start: startDate, end: endDate };
+            }
+
+            dEventInfo.time = "all-day";            
+        }
+
         if (lectioIndex === -1) {
-            dEvents.push(googleEventData.id!);
+            dEvents.push(dEventInfo);
             continue;
         }
 
@@ -304,26 +352,32 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
                             delete iEvents[eventIndex];
                             continue;
                         } else {
-                            dEvents.push(googleEventData.id!);
+                            dEvents.push(dEventInfo);
                             continue;
                         }
                     } else {
-                        dEvents.push(googleEventData.id!);
+                        dEvents.push(dEventInfo);
                         continue;
                     }
                 } else {
-                    dEvents.push(googleEventData.id!);
+                    dEvents.push(dEventInfo);
                     continue;
                 }
             } else {
-                dEvents.push(googleEventData.id!);
+                dEvents.push(dEventInfo);
                 continue;
             }
         }
     }
 
+    iEvents = iEvents.filter(event => event !== undefined);
+    dEvents = dEvents.filter(event => event !== undefined);
+
+    const iEventsShort: Array<GoogleEvent> = [];
+    iEvents.map(event => iEventsShort.push({ id: "none", label: event.label, date: event.date, time: event.time }));
+
     await deleteEvents(googleCalendar, dEvents);
     await insertEvents(googleCalendar, iEvents);
-    
-    return [ (iEvents.filter(event => event.label)).length, dEvents.length, (iEvents.filter(event => event.label)).length + dEvents.length ];
+
+    return [ iEventsShort, dEvents ];
 }
