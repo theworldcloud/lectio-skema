@@ -1,5 +1,5 @@
 import { google, calendar_v3 } from "googleapis";
-import { GoogleEvent, LectioEvent, LectioTime } from "./types";
+import { GoogleEvent, LectioEvent, LectioTime, ReplacedEvent, ReplacedEvents } from "./types";
 
 function getDateTime(lectioEvent: LectioEvent) {
     if (lectioEvent.time === "all-day") {
@@ -278,7 +278,7 @@ function checkDateTime(lectioEvent: LectioEvent, googleEvent: LectioEvent) {
     }
 }
 
-export async function calendar(authClient: any, dates: Array<string>, lectioCalendar: Array<LectioEvent>): Promise<Array<Array<GoogleEvent>>> {
+export async function calendar(authClient: any, dates: Array<string>, lectioCalendar: Array<LectioEvent>): Promise<Array<Array<GoogleEvent | ReplacedEvents>>> {
     const GOOGLE_CALENDAR = process.env.GOOGLE_CALENDAR;
     const googleCalendar = google.calendar({ version: "v3", auth: authClient });
 
@@ -373,11 +373,51 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
     iEvents = iEvents.filter(event => event !== undefined);
     dEvents = dEvents.filter(event => event !== undefined);
 
-    const iEventsShort: Array<GoogleEvent> = [];
+    let iEventsShort: Array<GoogleEvent> = [];
     iEvents.map(event => iEventsShort.push({ id: "none", label: event.label, date: event.date, time: event.time }));
+
+    const replaceEvents: Array<ReplacedEvents> = [];
+    const removeEvents: Record<string, Array<number>> = {
+        insert: [],
+        delete: []
+    }
+
+    for (const iEventIndexString in iEventsShort) {
+        const iEventIndex = parseInt(iEventIndexString);
+        const iEvent = iEventsShort[iEventIndex];
+
+        const dEventIndex = await dEvents.findIndex((event) => checkEvent(iEvent, event) === true);
+        const dEvent = dEvents[dEventIndex];
+
+        if (dEventIndex !== -1) {
+            replaceEvents.push({ deleted: dEvent, inserted: iEvent });
+
+            removeEvents.insert.push(iEventIndex);
+            removeEvents.delete.push(dEventIndex);
+        }
+    }
+
+    Object.keys(removeEvents).map((type) => removeEvents[type] = removeEvents[type].reverse());
+    removeEvents.insert.map((index) => delete iEventsShort[index]);
+    removeEvents.delete.map((index) => delete dEvents[index]);
+
+    iEventsShort = iEventsShort.filter((event) => event !== undefined);
+    dEvents = dEvents.filter((event) => event !== undefined);
 
     await deleteEvents(googleCalendar, dEvents);
     await insertEvents(googleCalendar, iEvents);
 
-    return [ iEventsShort, dEvents ];
+    return [ iEventsShort, dEvents, replaceEvents ];
+}
+
+function checkEvent(iEvent: GoogleEvent, dEvent: GoogleEvent) {
+    if (JSON.stringify(iEvent.date) === JSON.stringify(dEvent.date)) {
+        if (JSON.stringify(iEvent.time) === JSON.stringify(dEvent.time)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    return false;
 }

@@ -1,5 +1,5 @@
 import { createInterface } from "readline/promises";
-import type { GoogleEvent } from "types";
+import type { GoogleEvent, ReplacedEvents } from "types";
 import { debug } from "./main";
 import { application, BROWSER } from "./google";
 import type { Request, Response } from "express";
@@ -9,14 +9,33 @@ function generateEventsString(events: Array<GoogleEvent>) {
     let eventsString = "";
 
     for (const event of events) {
-        const time = typeof event.time === "object" ? `| ${event.time?.start} - ${event.time?.end}` : "";
-        eventsString += `<br/> [ ${event.date} ${time} ] ${event.label}`;
+        const time = typeof event.time === "object" ? `| ${event.time?.start} - ${event.time?.end} ` : "";
+        eventsString += `<br/> [ ${event.date} ${time} ] ${event.label} `;
     }
 
     return eventsString;
 }
  
-export async function listEvents(iEvents: Array<GoogleEvent>, dEvents: Array<GoogleEvent>) {
+function generateReplaceEventsString(replaces: Array<ReplacedEvents>) {
+    const arrow = "<font style='font-weight: bold; font-style: italic;'> → </font>";
+    let eventsString = "";
+
+    for (const replace of replaces) {
+        const time = typeof replace.deleted.time === "object" ? `| ${replace.deleted.time?.start} - ${replace.deleted.time?.end}` : "";
+        const date = typeof replace.deleted.date === "object" ? replace.deleted.date.start : replace.deleted.date;
+
+        let replaceString = `<br/> [ ${date} ${time} ] ${replace.deleted.label} `;
+        if (replace.inserted.label !== replace.deleted.label) {
+            replaceString += `${arrow} ${replace.inserted.label} `;
+        }
+
+        eventsString += replaceString;
+    }
+
+    return eventsString;
+}
+
+export async function listEvents(iEvents: Array<GoogleEvent>, dEvents: Array<GoogleEvent>, rEvents: Array<ReplacedEvents>) {
     const tryInterface = createInterface({ input: process.stdin, output: process.stdout });
     debug("Open a list with event data? Type 'yes' or 'no'");
 
@@ -27,15 +46,17 @@ export async function listEvents(iEvents: Array<GoogleEvent>, dEvents: Array<Goo
     if (answer !== "yes") return debug("Registered input as no!");
 
     application.get("/list", function (req: Request, res: Response) {
+        const affected = iEvents.length + dEvents.length + rEvents.length;
         const information = `
-            <strong> Calendar Stats </strong>
+            <strong> Calendar Stats | ${affected} events affected! </strong>
             <br/> Inserted ${iEvents.length} events
             <br/> Deleted ${dEvents.length} events
-            <br/> Affected ${iEvents.length + dEvents.length} events!
+            <br/> Replaced ${rEvents.length} events
         `;
 
         const inserted = `<strong> Inserted Events </strong> ${generateEventsString(iEvents)}`;
         const deleted = `<strong> Deleted Events </strong> ${generateEventsString(dEvents)}`;
+        const replaced = `<strong> Replaced Events </strong> ${generateReplaceEventsString(rEvents)}`;
 
         const data = `
             ${information}
@@ -44,6 +65,8 @@ export async function listEvents(iEvents: Array<GoogleEvent>, dEvents: Array<Goo
             ${inserted}
             <br/> <br/> <br/>
             ${deleted}
+            <br/> <br/> <br/>
+            ${replaced}
             <br/> <br/>
         `;
 

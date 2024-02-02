@@ -14,7 +14,8 @@ export const IGNORED_EVENTS = [
     "mus-lejr", "studiecafé", "folkemøde",
     "ledelse", "verdens", "bibliotek", 
     "tromme", "2.hf", "udveksling", "filmaften",
-    "flex", "1g", "2g", "3g", "masterclass", "frisport"
+    "flex", "1g", "2g", "3g", "masterclass", 
+    "frisport", "mindfulness"
 ]
 
 export interface LectioInformation {
@@ -49,4 +50,9 @@ export type GoogleEvent = {
     label: string;
     date?: LectioTime | string;
     time?: LectioTime | "all-day";
+}
+
+export interface ReplacedEvents {
+    deleted: GoogleEvent;
+    inserted: GoogleEvent;
 }

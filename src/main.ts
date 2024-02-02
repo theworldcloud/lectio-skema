@@ -4,6 +4,7 @@ import { lectio } from "./lectio";
 import { calendar } from "./calendar";
 import { googleAuthentication } from "./google";
 import { listEvents } from "./list";
+import { GoogleEvent, ReplacedEvents } from "types";
 
 const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
@@ -66,23 +67,27 @@ async function main() {
 
     debug("Updating calendar...");
     
-    const [ iEvents, dEvents ] = await calendar(authClient, dates, lectioCalendar);
-    const affectedEvents = iEvents.length + dEvents.length;
-    const insertedEvents = dEvents.length;
-    const deletedEvents = iEvents.length;
+    const [ iEvents, dEvents, rEvents ] = await calendar(authClient, dates, lectioCalendar);
+    const affectedEvents = iEvents.length + dEvents.length + rEvents.length;
+    const insertedEvents = iEvents.length;
+    const deletedEvents = dEvents.length;
+    const replacedEvents = rEvents.length;
 
-    debug("Updated calendar");
+    const state = affectedEvents > 0 ? `Updated calendar | ${affectedEvents} events affected!` : `Updated calendar`;
+    debug(state);
     
     if (affectedEvents > 0) {
         console.log(`- Inserted ${insertedEvents} events`);
         console.log(`- Deleted ${deletedEvents} events`);
+        console.log(`- Replaced ${replacedEvents} events`);
+    } else {
+        console.log(`- ${affectedEvents} events affected!`);
     }
     
-    console.log(`- ${affectedEvents} events affected!`);
     debug(" ");
     
     if (affectedEvents > 0) {
-        await listEvents(iEvents, dEvents);
+        await listEvents(iEvents as Array<GoogleEvent>, dEvents as Array<GoogleEvent>, rEvents as Array<ReplacedEvents>);
         debug(" ");
     }
 
