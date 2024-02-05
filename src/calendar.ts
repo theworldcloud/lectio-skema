@@ -376,6 +376,9 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
     let iEventsShort: Array<GoogleEvent> = [];
     iEvents.map(event => iEventsShort.push({ id: "none", label: event.label, date: event.date, time: event.time }));
 
+    await deleteEvents(googleCalendar, dEvents);
+    await insertEvents(googleCalendar, iEvents);
+
     const replaceEvents: Array<ReplacedEvents> = [];
     const removeEvents: Record<string, Array<number>> = {
         insert: [],
@@ -403,9 +406,6 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
 
     iEventsShort = iEventsShort.filter((event) => event !== undefined);
     dEvents = dEvents.filter((event) => event !== undefined);
-
-    await deleteEvents(googleCalendar, dEvents);
-    await insertEvents(googleCalendar, iEvents);
 
     return [ iEventsShort, dEvents, replaceEvents ];
 }
