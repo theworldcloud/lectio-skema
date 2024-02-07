@@ -126,11 +126,10 @@ function findEndofInformation(lines: Array<string>, start: number) {
     }
 
     for (let index = start; index < lines.length; index++) {
-
-
         const isEnd = lines[index + 1] === undefined || isNextLineStarting(lines[index + 1]);
-        
-        if (lines[index].length === 0 && isEnd === true) {
+        const isLineEnd = isNextLineStarting(lines[index]) === false;
+
+        if (lines[index].length === 0 && isEnd && isLineEnd) {
             return index;
         }
     }
@@ -201,7 +200,7 @@ function getEventData(googleEvent: calendar_v3.Schema$Event) {
             notes = notesData.join("\n");
         }
 
-        if (line.includes("Lektier:")) {
+        if (line.includes("Lektier:") && homework === undefined) {
             const homeworkEnd = findEndofInformation(description, lineIndex + 1);
             const homeworkData = description.slice(lineIndex + 1, homeworkEnd);
             homework = homeworkData.join("\n");
@@ -411,7 +410,23 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
 }
 
 function checkEvent(iEvent: GoogleEvent, dEvent: GoogleEvent) {
-    if (JSON.stringify(iEvent.date) === JSON.stringify(dEvent.date)) {
+    function check(iEvent: string, dEvent: string) {
+        const [ iEventLabel, iEventDesc ] = iEvent.split(" | ");
+        const [ dEventLabel, dEventDesc ] = dEvent.split(" | ");
+
+        const [ iEventClass, iEventTeam ] = iEventLabel.split(" ");
+        const [ dEventClass, dEventTeam ] = dEventLabel.split(" ");
+
+        if ((!iEventClass && !iEventTeam) || (!dEventClass && !dEventTeam)) return false;
+        if (iEventClass === dEventClass && iEventTeam === dEventTeam) return true;
+        return false;
+    }
+
+    if (check(iEvent.label, dEvent.label) && JSON.stringify(iEvent.date) === JSON.stringify(dEvent.date)) {
+        if (JSON.stringify(iEvent.time) !== JSON.stringify(dEvent.time)) {
+            return true;
+        }
+
         if (JSON.stringify(iEvent.time) === JSON.stringify(dEvent.time)) {
             return true;
         }

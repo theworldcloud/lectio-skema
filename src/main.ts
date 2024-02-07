@@ -5,6 +5,7 @@ import { calendar } from "./calendar";
 import { googleAuthentication } from "./google";
 import { listEvents } from "./list";
 import { GoogleEvent, ReplacedEvents } from "types";
+import { createInterface } from "readline/promises";
 
 const SECONDS = 1000;
 const MINUTES = 60 * SECONDS;
@@ -87,8 +88,18 @@ async function main() {
     debug(" ");
     
     if (affectedEvents > 0) {
+        // const tryInterface = createInterface({ input: process.stdin, output: process.stdout });
+        // debug("Open a list with event data? Type 'yes' or 'no'");
+    
+        // const answer = await tryInterface.question("> ");
+        // tryInterface.close();
+    
+        // debug(" ");
+        // if (answer !== "yes") return debug("Registered input as no!");
+
         await listEvents(iEvents as Array<GoogleEvent>, dEvents as Array<GoogleEvent>, rEvents as Array<ReplacedEvents>);
-        debug(" ");
+        // debug("Registered input as yes");
+        // debug(" ");
     }
 
     debug(" ");
