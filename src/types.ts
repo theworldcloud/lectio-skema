@@ -45,6 +45,20 @@ export type LectioEvent = {
     homework: string | undefined;
 }
 
+export type LectioAssignment = {
+    label: string;
+    
+    state: string;
+    name: string;
+    team: string;
+
+    deadline: string;
+    submitted: boolean;
+
+    date: string;
+    time: LectioTime | "all-day";
+}
+
 export type GoogleEvent = {
     id: string;
     label: string;

@@ -1,4 +1,4 @@
-import { LectioInformation, LectioTeams, LectioEvent, LectioTime, IGNORED_EVENTS, EVENT_TIMES, TEAM, CLASS } from "./types";
+import { LectioInformation, LectioTeams, LectioEvent, LectioTime, IGNORED_EVENTS, EVENT_TIMES, TEAM, CLASS, LectioAssignment } from "./types";
 import { debug } from "./main";
 
 async function getLectioInformation(): Promise<LectioInformation | undefined> {
@@ -80,6 +80,24 @@ async function getLectioTeams(lectioInformation: LectioInformation): Promise<Lec
     lectioTeams["PP3"] = "Projekt- og praktikperiode";
 
     return lectioTeams;
+}
+
+function getDate(then: string): string {
+    const millisecs = 86400000;
+
+    then = then.replace("-",  "/");
+    const [ dDay, dMonth, dYear ] = then.split("/");
+
+    const now = new Date(parseInt(dYear), parseInt(dMonth) - 1, parseInt(dDay));
+    const date = new Date(now.getFullYear(), 0, 1);
+
+    const timeDiff = now.getTime() - date.getTime();
+    const milDate = (timeDiff + millisecs) / millisecs;
+    const weekDate = Math.ceil(milDate / 7);
+    let year = date.getFullYear();
+    
+    const week = weekDate > 9 ? weekDate.toString() : "0" + weekDate.toString();
+    return week + year.toString();
 }
 
 function getDates(): Array<string> {
@@ -482,8 +500,6 @@ function getLectioEventsInformation(teams: LectioTeams, date: string, days: Arra
             }
         }
 
-        
-
         if (event.teachers === undefined) event.teachers = [];
         if (event.locations === undefined) event.locations = [];
         if (event.homework === undefined) event.homework = undefined;
@@ -535,7 +551,7 @@ async function getLectioEvents(information: LectioInformation, teams: LectioTeam
     const site = await lectioFetch(`login.aspx?prevurl=SkemaNy.aspx?week=${date}`, information);
     const htmlElements = site.split("\n");
 
-    const startCalendar = htmlElements.findIndex((element: string) => element.includes("s_m_Content_Content_SkemaNyMedNavigation_skemaprintarea"));
+    const startCalendar = htmlElements.findIndex((element: string) => element.includes("s_m_Content_Content_SkemaMedNavigation_skemaprintarea"));
     const endCalendar = htmlElements.findIndex((element: string) => element.includes("</table>"));
     let elements = htmlElements.slice(startCalendar, endCalendar);
 
@@ -568,6 +584,138 @@ async function getLectioEvents(information: LectioInformation, teams: LectioTeam
     return events;
 }
 
+async function getLectioAssignments(information: LectioInformation, teams: LectioTeams) {
+    function getAssignment(html: Array<string>, teams: LectioTeams): LectioAssignment | undefined {
+        let assignment: LectioAssignment = {} as any;
+
+        for (const index in html) {
+            const eIndex = parseInt(index);
+            const element = html[eIndex];
+            
+            if (element.includes("</th>")) {
+                html = [];
+                break;
+            }
+
+            if (element.length === 1) continue;
+
+            const lines = element.split("</td>");
+            for (const line of lines) {
+                if (line.includes("span title=") || line.includes("OnlyMobile") || line.includes("numCell")) {
+                    continue;
+                }
+
+                if (line.includes("data-lectioContextCard")) {
+                    const mline = line.split(`data-lectioContextCard`)[1].split(">")[1].replace("</span", "");
+                    const length = mline.split(" ")[1].split("-").length;
+                    const team = teams[mline.split(" ")[1].split("-")[length - 1].toUpperCase()];
+                    assignment.team = `${mline} (${team})`;
+                    continue;
+                }
+
+                if (line.includes("href")) {
+                    const mline = line.split(`href`)[1].split(">")[1].replace("</a", "");
+                    assignment.name = mline;
+                    continue;
+                }
+
+                if (line.includes("nowrap")) {
+                    const mline = line.split(">")[1]
+                    if (isDate(mline)) {
+                        const [ date, time ] = mline.split(" ");
+
+                        const year = date.split("-")[1]; 
+                        const [ day, month ] = date.split("-")[0].split("/"); 
+                        const [ hours, minutes ] = time.split(":");
+
+                        const dobject = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+                        dobject.setTime(dobject.getTime() + (30 * (60 * 1000)));
+
+                        const endHours = dobject.getHours() > 9 ? `${dobject.getHours()}` : `0${dobject.getHours()}`;
+                        const endMinutes = dobject.getMinutes() > 9 ? `${dobject.getMinutes()}` : `0${dobject.getMinutes()}`;
+
+                        const dateDay = parseInt(day) > 9 ? `${day}` : `0${day}`;
+                        const dateMonth = parseInt(month) > 9 ? `${month}` : `0${month}`;
+
+                        assignment.date = `${dateDay}/${dateMonth}-${year}`;
+                        // assignment.time = { start: time, end: `${endHours}:${endMinutes}` };
+                        assignment.deadline = time;
+                        assignment.time = "all-day";
+
+                        continue;
+                    }
+                }
+
+                if (line.includes("textCenter")) {
+                    const mline = line.split(">")[1];
+                    assignment.submitted = mline === "Afleveret";
+                    continue;
+                }
+            }
+            
+        }
+        
+        assignment.state = `${assignment.submitted ? '✔️' : '❌'} Aflevering`;
+        assignment.label = `${assignment.state} | ${assignment.deadline} | ${assignment.name} | ${assignment.team}`;
+
+        if (!assignment.team) return undefined;
+        return assignment;
+    }
+
+    const site = await lectioFetch(`login.aspx?prevurl=OpgaverElev.aspx`, information);
+    const htmlElements = site.split("\n");
+
+    const startCalendar = htmlElements.findIndex((element: string) => element.includes("s_m_Content_Content_ExerciseGV"));
+    const endCalendar = htmlElements.findIndex((element: string) => element.includes("</table>"));
+    let elements = htmlElements.slice(startCalendar, endCalendar);
+    elements = elements.join("\n").split("<tr");
+    elements = elements.slice(1, elements.length);
+    elements = elements.join("\n").split("</tr>");
+
+    const assignments: Array<LectioAssignment> = [];
+
+    for (const element of elements) {
+        let htmlAssignment = element.split("\n");
+
+        htmlAssignment = htmlAssignment.map((line: string) => line.replaceAll("\r", "").replaceAll("\t", ""));
+        htmlAssignment = htmlAssignment.filter((line: string) => line.length > 0);
+
+        const assignment = getAssignment(htmlAssignment, teams);
+        if (assignment) {
+            assignments.push(assignment);
+        }
+    }
+
+    return assignments;
+}
+
+async function getLectioWeekAssignments(assignments: Array<LectioAssignment>, date: string) {
+    const weekAssignments: Array<LectioEvent> = [];
+
+    for (const assignment of assignments) {
+        const weekDate = getDate(assignment.date);
+        if (weekDate !== date) continue;
+
+        const event: LectioEvent = {
+            label: assignment.label,
+            date: assignment.date,
+            time: assignment.time,
+
+            available: true,
+            cancelled: false,
+
+            teachers: [],
+            locations: [],
+            notes: undefined,
+            homework: undefined
+        };
+
+        weekAssignments.push(event);
+    }
+
+    return weekAssignments;
+}
+
 export async function lectio(): Promise<any> {
     const lectioInformation = await getLectioInformation();
     if (lectioInformation === undefined) return;
@@ -575,14 +723,19 @@ export async function lectio(): Promise<any> {
     const lectioTeams = await getLectioTeams(lectioInformation);
     if (lectioTeams === undefined) return;
 
-    const calendar = [];
+    const calendar: Array<LectioEvent> = [];
     const dates = getDates();
     const calendarDates = getGoogleDates([ dates[0], dates[2] ]);
+    const assignments = await getLectioAssignments(lectioInformation, lectioTeams);
 
     for (const date of dates) {
         const weekCalendar = await getLectioEvents(lectioInformation, lectioTeams, date);
         calendar.push(...weekCalendar);
+
+        const weekAssignments = await getLectioWeekAssignments(assignments, date);
+        calendar.push(...weekAssignments);
     }
+
 
     return [ calendar, calendarDates ];
 }

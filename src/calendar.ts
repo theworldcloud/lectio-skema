@@ -1,5 +1,5 @@
 import { google, calendar_v3 } from "googleapis";
-import { GoogleEvent, LectioEvent, LectioTime, ReplacedEvent, ReplacedEvents } from "./types";
+import { GoogleEvent, LectioEvent, LectioTime, ReplacedEvents } from "./types";
 
 function getDateTime(lectioEvent: LectioEvent) {
     if (lectioEvent.time === "all-day") {
@@ -230,6 +230,7 @@ function checkDateTime(lectioEvent: LectioEvent, googleEvent: LectioEvent) {
 
     if (typeof lectioEvent.date === typeof googleEvent.date) {
         if (typeof lectioEvent.date === "string" && typeof googleEvent.date === "string") {
+
             if (lectioEvent.date === googleEvent.date) {
                 cDate = true;
             } else {
@@ -410,7 +411,7 @@ export async function calendar(authClient: any, dates: Array<string>, lectioCale
 }
 
 function checkEvent(iEvent: GoogleEvent, dEvent: GoogleEvent) {
-    function check(iEvent: string, dEvent: string) {
+    function checkWithTime(iEvent: string, dEvent: string) {
         const [ iEventLabel, iEventDesc ] = iEvent.split(" | ");
         const [ dEventLabel, dEventDesc ] = dEvent.split(" | ");
 
@@ -422,17 +423,36 @@ function checkEvent(iEvent: GoogleEvent, dEvent: GoogleEvent) {
         return false;
     }
 
-    if (check(iEvent.label, dEvent.label) && JSON.stringify(iEvent.date) === JSON.stringify(dEvent.date)) {
-        if (JSON.stringify(iEvent.time) !== JSON.stringify(dEvent.time)) {
-            return true;
-        }
-
-        if (JSON.stringify(iEvent.time) === JSON.stringify(dEvent.time)) {
-            return true;
-        }
-
+    function checkWithDay(iEvent: string, dEvent: string) {
+        if (iEvent !== dEvent) return true;
         return false;
     }
 
+    if (typeof iEvent.time === "string" && typeof dEvent.time === "string") {
+        if (checkWithDay(iEvent.label, dEvent.label) && JSON.stringify(iEvent.date) === JSON.stringify(dEvent.date)) {
+            if (JSON.stringify(iEvent.time) !== JSON.stringify(dEvent.time)) {
+                return true;
+            }
+    
+            if (JSON.stringify(iEvent.time) === JSON.stringify(dEvent.time)) {
+                return true;
+            }
+    
+            return false;
+        }
+    } else {
+        if (checkWithTime(iEvent.label, dEvent.label) && JSON.stringify(iEvent.date) === JSON.stringify(dEvent.date)) {
+            if (JSON.stringify(iEvent.time) !== JSON.stringify(dEvent.time)) {
+                return true;
+            }
+    
+            if (JSON.stringify(iEvent.time) === JSON.stringify(dEvent.time)) {
+                return true;
+            }
+    
+            return false;
+        }
+    }
+    
     return false;
 }
