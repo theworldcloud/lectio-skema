@@ -1,6 +1,9 @@
 import * as dotenv from "dotenv";
+import {getLessons} from "./lectio";
 dotenv.config();
 
-import { generateCredentials} from "./lectio";
+async function main() {
+    const lessons = getLessons(3);
+}
 
-generateCredentials();
+main();
