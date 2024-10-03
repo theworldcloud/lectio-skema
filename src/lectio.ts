@@ -1,4 +1,5 @@
 import { scrape } from "twchtmlscraper";
+import {Lesson} from "../backup/types";
 
 async function generateCredentials() {
     const schoolId = process.env.LECTIO_SCHOOL_ID;
@@ -12,7 +13,7 @@ async function generateCredentials() {
         .filter(input => input.attributes.value !== 0);
 
     const data = new URLSearchParams();
-    dataInputs.forEach(input => data.append(input.attributes.name, input.attributes.value));
+    dataInputs.forEach(input => data.append(input.attributes.name as string, input.attributes.value as string));
 
     const username = atob(process.env.LECTIO_USERNAME as string);
     const password = atob(process.env.LECTIO_PASSWORD as string);
@@ -35,11 +36,32 @@ async function lectioScrape(url: string) {
         body: credentials.data
     });
 
-    console.log(html);
     return html;
 }
 
 export async function getLessons(weeks: Number) {
     const html = await lectioScrape("SkemaNy.aspx");
+    const lessonsHtml = html.findAll(".s2skemabrik");
+    const gradeHtml = html.find(".ls-identity-container > span");
 
+    let grade = "";
+    if (gradeHtml?.content)
+        grade = gradeHtml.content.split(", ")[1].replace("-", "").trim();
+
+    const lessons: Array<Lesson> = [];
+    lessonsHtml.forEach(function(lessonHtml) {
+        if ((lessonHtml.data.tooltip as string).includes("Hele dagen") && !(lessonHtml.data.tooltip as string).includes(grade)) return;
+
+        console.log(lessonHtml);
+        const lesson: Lesson = {
+            cancelled: false
+        } as any;
+
+
+
+        if (lessonHtml.class.includes("s2cancelled")) lesson.cancelled = true;
+
+        console.log(lesson);
+        lessons.push(lesson);
+    });
 }
