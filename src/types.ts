@@ -1,3 +1,13 @@
+export type LectioCredentials = { sessionId: string, data: URLSearchParams };
+
+export interface LectioAuthentication {
+    schoolId: number;
+    sessionId: string;
+
+    token: string;
+    expires: number;
+}
+
 export interface Lesson {
     label: string;
 

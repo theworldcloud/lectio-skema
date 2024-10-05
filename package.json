@@ -15,7 +15,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "googleapis": "^126.0.1",
-    "twchtmlscraper": "^1.0.7"
+    "twchtmlscraper": "^1.1.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
